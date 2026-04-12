@@ -29,6 +29,8 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { MapPin, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const leadFormSchema = z.object({
   company_name: z.string().trim().min(1, 'Company name is required').max(200),
