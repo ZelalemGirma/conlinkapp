@@ -30,6 +30,7 @@ import {
   BarChart3,
   UserPlus,
   FileBarChart,
+  Trophy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -48,6 +49,7 @@ const navItems: NavItem[] = [
   { title: 'Map View', icon: Map, path: '/map', roles: ['admin', 'manager', 'rep'] },
   { title: 'Targets', icon: Target, path: '/targets', roles: ['admin', 'manager'] },
   { title: 'Reports', icon: FileBarChart, path: '/reports', roles: ['admin', 'manager', 'rep'] },
+  { title: 'Leaderboard', icon: Trophy, path: '/leaderboard', roles: ['admin', 'manager', 'rep'] },
   { title: 'Team', icon: Users, path: '/team', roles: ['admin', 'manager'] },
   { title: 'User Management', icon: UserPlus, path: '/users', roles: ['admin'] },
   { title: 'Settings', icon: Settings, path: '/settings', roles: ['admin'] },

@@ -23,6 +23,7 @@ import ReportKPICards from '@/components/reports/ReportKPICards';
 import ConversionFunnel from '@/components/reports/ConversionFunnel';
 import ActivityVolumeChart from '@/components/reports/ActivityVolumeChart';
 import RepSuccessTable from '@/components/reports/RepSuccessTable';
+import DateRangePresets from '@/components/reports/DateRangePresets';
 
 type LeadRow = Database['public']['Tables']['leads']['Row'];
 type InteractionRow = Database['public']['Tables']['interaction_logs']['Row'];
@@ -291,6 +292,10 @@ const Reports: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
+          <div className="mb-3">
+            <Label className="text-xs mb-1.5 block">Quick Select</Label>
+            <DateRangePresets onSelect={(from, to) => { setDateFrom(from); setDateTo(to); }} />
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {/* Date From */}
             <div className="space-y-1">

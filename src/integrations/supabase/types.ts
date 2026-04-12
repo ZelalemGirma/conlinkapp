@@ -38,6 +38,38 @@ export type Database = {
         }
         Relationships: []
       }
+      duplicate_attempts: {
+        Row: {
+          attempted_at: string
+          company_name: string
+          id: string
+          matched_lead_id: string | null
+          user_id: string
+        }
+        Insert: {
+          attempted_at?: string
+          company_name: string
+          id?: string
+          matched_lead_id?: string | null
+          user_id: string
+        }
+        Update: {
+          attempted_at?: string
+          company_name?: string
+          id?: string
+          matched_lead_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "duplicate_attempts_matched_lead_id_fkey"
+            columns: ["matched_lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interaction_logs: {
         Row: {
           created_at: string
@@ -69,6 +101,44 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interaction_scores: {
+        Row: {
+          analysis_notes: string | null
+          created_at: string
+          effort_score: number
+          id: string
+          interaction_id: string
+          quality_label: string
+          sentiment: string
+        }
+        Insert: {
+          analysis_notes?: string | null
+          created_at?: string
+          effort_score?: number
+          id?: string
+          interaction_id: string
+          quality_label?: string
+          sentiment?: string
+        }
+        Update: {
+          analysis_notes?: string | null
+          created_at?: string
+          effort_score?: number
+          id?: string
+          interaction_id?: string
+          quality_label?: string
+          sentiment?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interaction_scores_interaction_id_fkey"
+            columns: ["interaction_id"]
+            isOneToOne: true
+            referencedRelation: "interaction_logs"
             referencedColumns: ["id"]
           },
         ]
@@ -206,6 +276,36 @@ export type Database = {
           full_name?: string
           id?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      rep_badges: {
+        Row: {
+          badge_label: string
+          badge_type: string
+          created_at: string
+          id: string
+          period_end: string
+          period_start: string
+          user_id: string
+        }
+        Insert: {
+          badge_label: string
+          badge_type: string
+          created_at?: string
+          id?: string
+          period_end: string
+          period_start: string
+          user_id: string
+        }
+        Update: {
+          badge_label?: string
+          badge_type?: string
+          created_at?: string
+          id?: string
+          period_end?: string
+          period_start?: string
           user_id?: string
         }
         Relationships: []
