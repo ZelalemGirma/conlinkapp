@@ -211,6 +211,7 @@ const Leads = () => {
       </Card>
 
       <LeadFormDialog open={formOpen} onOpenChange={setFormOpen} />
+      <LeadDetailDialog lead={selectedLead} open={detailOpen} onOpenChange={setDetailOpen} />
     </div>
   );
 };
