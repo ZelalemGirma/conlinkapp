@@ -14,16 +14,235 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      interaction_logs: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          lead_id: string
+          notes: string
+          type: Database["public"]["Enums"]["interaction_type"]
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          lead_id: string
+          notes?: string
+          type: Database["public"]["Enums"]["interaction_type"]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          lead_id?: string
+          notes?: string
+          type?: Database["public"]["Enums"]["interaction_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interaction_logs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          assigned_rep_id: string | null
+          campaign_tag: string | null
+          category: Database["public"]["Enums"]["lead_category"]
+          company_name: string
+          contact_person: string
+          created_at: string
+          created_by: string
+          email: string | null
+          gps_lat: number | null
+          gps_lng: number | null
+          id: string
+          location_zone: string | null
+          phone: string | null
+          photo_url: string | null
+          position: string | null
+          specific_address: string | null
+          status: Database["public"]["Enums"]["lead_status"]
+          updated_at: string
+        }
+        Insert: {
+          assigned_rep_id?: string | null
+          campaign_tag?: string | null
+          category: Database["public"]["Enums"]["lead_category"]
+          company_name: string
+          contact_person?: string
+          created_at?: string
+          created_by: string
+          email?: string | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          id?: string
+          location_zone?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          position?: string | null
+          specific_address?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+        }
+        Update: {
+          assigned_rep_id?: string | null
+          campaign_tag?: string | null
+          category?: Database["public"]["Enums"]["lead_category"]
+          company_name?: string
+          contact_person?: string
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          id?: string
+          location_zone?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          position?: string | null
+          specific_address?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sales_targets: {
+        Row: {
+          actual_count: number
+          created_at: string
+          id: string
+          period_end: string
+          period_start: string
+          rep_id: string
+          target_count: number
+          updated_at: string
+        }
+        Insert: {
+          actual_count?: number
+          created_at?: string
+          id?: string
+          period_end: string
+          period_start: string
+          rep_id: string
+          target_count?: number
+          updated_at?: string
+        }
+        Update: {
+          actual_count?: number
+          created_at?: string
+          id?: string
+          period_end?: string
+          period_start?: string
+          rep_id?: string
+          target_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "manager" | "rep"
+      interaction_type:
+        | "phone"
+        | "email"
+        | "telegram"
+        | "site_visit"
+        | "meeting"
+      lead_category:
+        | "Building Materials"
+        | "Electrical & Power"
+        | "Electro Mechanical"
+        | "Conveying Systems"
+        | "Solar Technology"
+        | "Specialities"
+        | "Metal & Industrial Engineering"
+        | "Pre-Engineered System"
+        | "Road Construction Materials"
+        | "Geological Systems"
+        | "Construction Machinery"
+        | "Land and Building Development"
+        | "Consultants"
+        | "Construction Firms"
+        | "Interior Design & Architecture"
+        | "Financial Service"
+      lead_status:
+        | "draft"
+        | "pending"
+        | "approved"
+        | "deal_closed"
+        | "meeting_scheduled"
+        | "profile_sent"
+        | "needs_followup"
+        | "call_me_back"
+        | "rejected_phone"
+        | "rejected_spot"
+        | "company_closed"
+        | "wrong_number"
+        | "not_reachable"
+        | "not_answered"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +369,43 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "manager", "rep"],
+      interaction_type: ["phone", "email", "telegram", "site_visit", "meeting"],
+      lead_category: [
+        "Building Materials",
+        "Electrical & Power",
+        "Electro Mechanical",
+        "Conveying Systems",
+        "Solar Technology",
+        "Specialities",
+        "Metal & Industrial Engineering",
+        "Pre-Engineered System",
+        "Road Construction Materials",
+        "Geological Systems",
+        "Construction Machinery",
+        "Land and Building Development",
+        "Consultants",
+        "Construction Firms",
+        "Interior Design & Architecture",
+        "Financial Service",
+      ],
+      lead_status: [
+        "draft",
+        "pending",
+        "approved",
+        "deal_closed",
+        "meeting_scheduled",
+        "profile_sent",
+        "needs_followup",
+        "call_me_back",
+        "rejected_phone",
+        "rejected_spot",
+        "company_closed",
+        "wrong_number",
+        "not_reachable",
+        "not_answered",
+      ],
+    },
   },
 } as const
