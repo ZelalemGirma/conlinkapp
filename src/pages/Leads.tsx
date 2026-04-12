@@ -1,15 +1,210 @@
-const Leads = () => (
-  <div className="space-y-6">
-    <div className="flex items-center justify-between">
-      <div>
-        <h1 className="text-2xl font-bold text-secondary">Leads</h1>
-        <p className="text-muted-foreground">Manage and track all your construction leads</p>
+import React, { useState } from 'react';
+import { useLeads } from '@/hooks/useLeads';
+import { useAuth } from '@/contexts/AuthContext';
+import { LEAD_CATEGORIES, LOCATION_ZONES, LEAD_STATUS_CONFIG } from '@/types';
+import LeadFormDialog from '@/components/leads/LeadFormDialog';
+import LeadStatusBadge from '@/components/leads/LeadStatusBadge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Plus, Search, Phone, Mail, X } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const Leads = () => {
+  const { role } = useAuth();
+  const [formOpen, setFormOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [zoneFilter, setZoneFilter] = useState('');
+
+  const { data: leads, isLoading } = useLeads({
+    search: search || undefined,
+    category: categoryFilter || undefined,
+    status: statusFilter || undefined,
+    zone: zoneFilter || undefined,
+  });
+
+  const hasFilters = search || categoryFilter || statusFilter || zoneFilter;
+  const clearFilters = () => {
+    setSearch('');
+    setCategoryFilter('');
+    setStatusFilter('');
+    setZoneFilter('');
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-secondary">Leads</h1>
+          <p className="text-muted-foreground">
+            {leads?.length ?? 0} lead{leads?.length !== 1 ? 's' : ''} total
+          </p>
+        </div>
+        <Button onClick={() => setFormOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          New Lead
+        </Button>
       </div>
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="pt-4 pb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="relative lg:col-span-2">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search company, contact, phone..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={categoryFilter} onValueChange={v => setCategoryFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {LEAD_CATEGORIES.map(c => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={v => setStatusFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {Object.entries(LEAD_STATUS_CONFIG).map(([key, val]) => (
+                  <SelectItem key={key} value={key}>{val.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={zoneFilter} onValueChange={v => setZoneFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="Zone" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Zones</SelectItem>
+                {LOCATION_ZONES.map(z => (
+                  <SelectItem key={z} value={z}>{z}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {hasFilters && (
+            <Button variant="ghost" size="sm" className="mt-2 text-xs" onClick={clearFilters}>
+              <X className="mr-1 h-3 w-3" /> Clear filters
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Zone</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Campaign</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      {Array.from({ length: 7 }).map((_, j) => (
+                        <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : leads?.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                      {hasFilters ? 'No leads match your filters.' : 'No leads yet. Click "New Lead" to create one.'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  leads?.map(lead => (
+                    <TableRow key={lead.id} className="group">
+                      <TableCell>
+                        <div className="font-medium">{lead.company_name}</div>
+                        {lead.specific_address && (
+                          <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                            {lead.specific_address}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div>{lead.contact_person}</div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {lead.phone && (
+                            <a
+                              href={`tel:${lead.phone}`}
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              <Phone className="h-3 w-3" />
+                              {lead.phone}
+                            </a>
+                          )}
+                          {lead.email && (
+                            <a
+                              href={`mailto:${lead.email}`}
+                              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+                            >
+                              <Mail className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs">{lead.category}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{lead.location_zone || '—'}</span>
+                      </TableCell>
+                      <TableCell>
+                        <LeadStatusBadge status={lead.status} />
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground">{lead.campaign_tag || '—'}</span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" className="text-xs">
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <LeadFormDialog open={formOpen} onOpenChange={setFormOpen} />
     </div>
-    <div className="rounded-lg border border-dashed p-12 text-center">
-      <p className="text-muted-foreground">Lead management coming in Phase 2</p>
-    </div>
-  </div>
-);
+  );
+};
 
 export default Leads;
