@@ -55,7 +55,28 @@ interface LeadFormDialogProps {
 
 const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) => {
   const createLead = useCreateLead();
+  const [capturingLocation, setCapturingLocation] = useState(false);
 
+  const captureLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    setCapturingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        form.setValue('gps_lat', position.coords.latitude);
+        form.setValue('gps_lng', position.coords.longitude);
+        setCapturingLocation(false);
+        toast.success('Location captured');
+      },
+      (error) => {
+        setCapturingLocation(false);
+        toast.error('Failed to get location: ' + error.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
   const form = useForm<LeadFormValues>({
     resolver: zodResolver(leadFormSchema),
     defaultValues: {
