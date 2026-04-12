@@ -1,10 +1,17 @@
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
-import { ClipboardList, TrendingUp, Calendar, Star } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
+import { useDashboardStats, useSpotlightRep } from '@/hooks/useDashboardStats';
+import { ClipboardList, TrendingUp, Calendar, AlertTriangle, Star } from 'lucide-react';
+import RepKPICards from '@/components/dashboard/RepKPICards';
+import TeamPerformanceChart from '@/components/dashboard/TeamPerformanceChart';
+import StatusPieChart from '@/components/dashboard/StatusPieChart';
+import GoldenSpotlightControl from '@/components/dashboard/GoldenSpotlightControl';
+import MotivationBoard from '@/components/dashboard/MotivationBoard';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const StatCard = ({ title, value, subtitle, icon: Icon, color }: {
-  title: string; value: string; subtitle?: string; icon: React.ElementType; color?: string;
+  title: string; value: string | number; subtitle?: string; icon: React.ElementType; color?: string;
 }) => (
   <Card>
     <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -20,18 +27,25 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color }: {
 
 const Dashboard = () => {
   const { role, user } = useAuth();
+  const { data: stats, isLoading } = useDashboardStats();
+  const { data: spotlight } = useSpotlightRep();
 
   return (
     <div className="space-y-6">
-      {/* Golden Sales Spotlight */}
-      <div className="overflow-hidden rounded-lg bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border border-primary/20">
-        <div className="flex items-center gap-3 px-6 py-3">
-          <Star className="h-5 w-5 text-primary fill-primary" />
-          <p className="animate-marquee whitespace-nowrap text-sm font-medium text-secondary">
-            🏆 Golden Sales Spotlight: <strong>Abebe Kebede</strong> — 47 deals closed this month! Keep it up!
-          </p>
+      {/* Motivation Board pop-up on login */}
+      {role === 'rep' && <MotivationBoard />}
+
+      {/* Golden Sales Spotlight Banner */}
+      {spotlight && (
+        <div className="overflow-hidden rounded-lg bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border border-primary/20">
+          <div className="flex items-center gap-3 px-6 py-3">
+            <Star className="h-5 w-5 text-primary fill-primary" />
+            <p className="text-sm font-medium text-secondary">
+              🏆 Golden Sales Spotlight: <strong>{spotlight.fullName}</strong> — {spotlight.dealsClosed} deals closed! Keep it up!
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div>
         <h1 className="text-2xl font-bold text-secondary">
@@ -40,55 +54,33 @@ const Dashboard = () => {
         <p className="text-muted-foreground">Welcome back, {user?.user_metadata?.full_name || user?.email}</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Leads" value="127" subtitle="+12 this week" icon={ClipboardList} />
-        <StatCard title="Deals Closed" value="23" subtitle="This month" icon={TrendingUp} color="text-success" />
-        <StatCard title="Meetings Today" value="5" subtitle="Next at 2:30 PM" icon={Calendar} color="text-info" />
-        <StatCard title="Follow-ups Due" value="8" subtitle="3 overdue" icon={ClipboardList} color="text-destructive" />
-      </div>
-
-      {role === 'rep' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">My Target Progress</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>Leads Contacted</span>
-                <span className="font-medium">34 / 50</span>
-              </div>
-              <Progress value={68} className="h-2" />
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>Deals Closed</span>
-                <span className="font-medium">7 / 15</span>
-              </div>
-              <Progress value={47} className="h-2" />
-            </div>
-          </CardContent>
-        </Card>
+      {/* Stats Cards */}
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard title="Total Leads" value={stats?.totalLeads ?? 0} subtitle={`+${stats?.leadsThisWeek ?? 0} this week`} icon={ClipboardList} />
+          <StatCard title="Deals Closed" value={stats?.dealsClosed ?? 0} subtitle="All time" icon={TrendingUp} color="text-success" />
+          <StatCard title="Meetings Today" value={stats?.meetingsToday ?? 0} icon={Calendar} color="text-info" />
+          <StatCard title="Follow-ups Due" value={stats?.followupsDue ?? 0} subtitle={`${stats?.overdueCount ?? 0} overdue (3+ days)`} icon={AlertTriangle} color="text-destructive" />
+        </div>
       )}
 
-      {(role === 'admin' || role === 'manager') && (
+      {/* Rep KPI */}
+      {role === 'rep' && <RepKPICards />}
+
+      {/* Charts */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {stats?.statusBreakdown && <StatusPieChart statusBreakdown={stats.statusBreakdown} />}
+        {(role === 'admin' || role === 'manager') && <TeamPerformanceChart />}
+      </div>
+
+      {/* Admin: Spotlight Control */}
+      {role === 'admin' && (
         <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Team Performance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-sm">Team analytics will be populated with live data in Phase 5.</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-sm">Live activity feed coming in Phase 3.</p>
-            </CardContent>
-          </Card>
+          <GoldenSpotlightControl />
         </div>
       )}
     </div>
