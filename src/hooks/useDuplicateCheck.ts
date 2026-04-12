@@ -1,13 +1,14 @@
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEffect } from 'react';
 
 export const useDuplicateCheck = (companyName: string, phone: string, excludeId?: string) => {
   const { user } = useAuth();
   const trimmedName = companyName.trim();
   const trimmedPhone = phone.trim();
   const enabled = trimmedName.length >= 3 || trimmedPhone.length >= 4;
+  const lastTracked = useRef('');
 
   const query = useQuery({
     queryKey: ['duplicate-check', trimmedName, trimmedPhone, excludeId],
@@ -34,12 +35,15 @@ export const useDuplicateCheck = (companyName: string, phone: string, excludeId?
   // Track duplicate attempts for discrepancy alerts
   useEffect(() => {
     if (query.data && query.data.length > 0 && user && trimmedName.length >= 3) {
-      // Log the duplicate attempt (fire and forget)
-      supabase.from('duplicate_attempts').insert({
-        user_id: user.id,
-        company_name: trimmedName,
-        matched_lead_id: query.data[0].id,
-      }).then(() => {});
+      const key = `${trimmedName}-${query.data[0].id}`;
+      if (key !== lastTracked.current) {
+        lastTracked.current = key;
+        supabase.from('duplicate_attempts').insert({
+          user_id: user.id,
+          company_name: trimmedName,
+          matched_lead_id: query.data[0].id,
+        }).then(() => {});
+      }
     }
   }, [query.data, user, trimmedName]);
 
