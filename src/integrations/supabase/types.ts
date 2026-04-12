@@ -63,6 +63,7 @@ export type Database = {
           gps_lng: number | null
           id: string
           location_zone: string | null
+          meeting_date: string | null
           phone: string | null
           photo_url: string | null
           position: string | null
@@ -83,6 +84,7 @@ export type Database = {
           gps_lng?: number | null
           id?: string
           location_zone?: string | null
+          meeting_date?: string | null
           phone?: string | null
           photo_url?: string | null
           position?: string | null
@@ -103,6 +105,7 @@ export type Database = {
           gps_lng?: number | null
           id?: string
           location_zone?: string | null
+          meeting_date?: string | null
           phone?: string | null
           photo_url?: string | null
           position?: string | null
@@ -111,6 +114,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      meetings: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          lead_id: string
+          location: string | null
+          notes: string | null
+          scheduled_at: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          lead_id: string
+          location?: string | null
+          notes?: string | null
+          scheduled_at: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          lead_id?: string
+          location?: string | null
+          notes?: string | null
+          scheduled_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetings_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
