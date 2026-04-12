@@ -5,6 +5,7 @@ import { LEAD_CATEGORIES, LOCATION_ZONES, LEAD_STATUS_CONFIG } from '@/types';
 import LeadFormDialog from '@/components/leads/LeadFormDialog';
 import LeadDetailDialog from '@/components/leads/LeadDetailDialog';
 import LeadStatusBadge from '@/components/leads/LeadStatusBadge';
+import LeadHealthIndicator from '@/components/leads/LeadHealthIndicator';
 import { Button } from '@/components/ui/button';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -139,6 +140,7 @@ const Leads = () => {
                   <TableHead>Category</TableHead>
                   <TableHead>Zone</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Health</TableHead>
                   <TableHead>Campaign</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -147,14 +149,14 @@ const Leads = () => {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 7 }).map((_, j) => (
+                      {Array.from({ length: 8 }).map((_, j) => (
                         <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : leads?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                       {hasFilters ? 'No leads match your filters.' : 'No leads yet. Click "New Lead" to create one.'}
                     </TableCell>
                   </TableRow>
@@ -201,6 +203,9 @@ const Leads = () => {
                       </TableCell>
                       <TableCell>
                         <LeadStatusBadge status={lead.status} />
+                      </TableCell>
+                      <TableCell>
+                        <LeadHealthIndicator updatedAt={lead.updated_at} status={lead.status} />
                       </TableCell>
                       <TableCell>
                         <span className="text-xs text-muted-foreground">{lead.campaign_tag || '—'}</span>
