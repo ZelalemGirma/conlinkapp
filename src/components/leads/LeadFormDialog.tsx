@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCreateLead } from '@/hooks/useLeads';
+import { useDuplicateCheck } from '@/hooks/useDuplicateCheck';
 import { LEAD_CATEGORIES, LOCATION_ZONES } from '@/types';
+import DuplicateWarning from '@/components/leads/DuplicateWarning';
+import CameraScanDialog from '@/components/leads/CameraScanDialog';
 import {
   Dialog,
   DialogContent,
@@ -29,7 +32,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 
 const leadFormSchema = z.object({
@@ -56,6 +59,25 @@ interface LeadFormDialogProps {
 const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) => {
   const createLead = useCreateLead();
   const [capturingLocation, setCapturingLocation] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
+
+  const form = useForm<LeadFormValues>({
+    resolver: zodResolver(leadFormSchema),
+    defaultValues: {
+      company_name: '',
+      contact_person: '',
+      position: '',
+      phone: '',
+      email: '',
+      specific_address: '',
+      location_zone: '',
+      campaign_tag: '',
+    },
+  });
+
+  const watchedCompany = useWatch({ control: form.control, name: 'company_name' }) || '';
+  const watchedPhone = useWatch({ control: form.control, name: 'phone' }) || '';
+  const { data: duplicates } = useDuplicateCheck(watchedCompany, watchedPhone);
 
   const captureLocation = () => {
     if (!navigator.geolocation) {
@@ -77,19 +99,13 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
-  const form = useForm<LeadFormValues>({
-    resolver: zodResolver(leadFormSchema),
-    defaultValues: {
-      company_name: '',
-      contact_person: '',
-      position: '',
-      phone: '',
-      email: '',
-      specific_address: '',
-      location_zone: '',
-      campaign_tag: '',
-    },
-  });
+
+  const handleOCRResult = (data: { company_name?: string; contact_person?: string; phone?: string; email?: string }) => {
+    if (data.company_name) form.setValue('company_name', data.company_name);
+    if (data.contact_person) form.setValue('contact_person', data.contact_person);
+    if (data.phone) form.setValue('phone', data.phone);
+    if (data.email) form.setValue('email', data.email);
+  };
 
   const onSubmit = async (values: LeadFormValues) => {
     await createLead.mutateAsync({
@@ -111,190 +127,204 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle className="text-secondary">New Lead Proposal</DialogTitle>
-        </DialogHeader>
-        <ScrollArea className="max-h-[70vh] pr-4">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="company_name"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Company Name *</FormLabel>
-                      <FormControl><Input placeholder="Enter company name" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="contact_person"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Contact Person</FormLabel>
-                      <FormControl><Input placeholder="Full name" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="position"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Position</FormLabel>
-                      <FormControl><Input placeholder="Job title" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone</FormLabel>
-                      <FormControl><Input placeholder="+251..." type="tel" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl><Input placeholder="email@company.com" type="email" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Category *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {LEAD_CATEGORIES.map(cat => (
-                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="specific_address"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Specific Address</FormLabel>
-                      <FormControl><Textarea placeholder="Detailed address..." rows={2} {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="location_zone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location Zone</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select zone" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {LOCATION_ZONES.map(zone => (
-                            <SelectItem key={zone} value={zone}>{zone}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="campaign_tag"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Campaign Tag</FormLabel>
-                      <FormControl><Input placeholder="e.g. Edition 13" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="md:col-span-2 flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={captureLocation}
-                    disabled={capturingLocation}
-                    className="gap-1.5"
-                  >
-                    {capturingLocation ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <MapPin className="h-4 w-4 text-primary" />
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="text-secondary flex items-center justify-between">
+              <span>New Lead Proposal</span>
+              <Button type="button" variant="outline" size="sm" onClick={() => setScanOpen(true)} className="gap-1.5">
+                <Camera className="h-4 w-4" /> Scan Card
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[70vh] pr-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-4">
+                {/* Duplicate warning */}
+                {duplicates && duplicates.length > 0 && (
+                  <DuplicateWarning duplicates={duplicates} />
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="company_name"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Company Name *</FormLabel>
+                        <FormControl><Input placeholder="Enter company name" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                    {capturingLocation ? 'Capturing…' : 'Capture Current Location'}
-                  </Button>
-                  <span className="text-xs text-muted-foreground">or enter manually below</span>
+                  />
+                  <FormField
+                    control={form.control}
+                    name="contact_person"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Contact Person</FormLabel>
+                        <FormControl><Input placeholder="Full name" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="position"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Position</FormLabel>
+                        <FormControl><Input placeholder="Job title" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone</FormLabel>
+                        <FormControl><Input placeholder="+251..." type="tel" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl><Input placeholder="email@company.com" type="email" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Category *</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {LEAD_CATEGORIES.map(cat => (
+                              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="specific_address"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Specific Address</FormLabel>
+                        <FormControl><Textarea placeholder="Detailed address..." rows={2} {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="location_zone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Location Zone</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select zone" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {LOCATION_ZONES.map(zone => (
+                              <SelectItem key={zone} value={zone}>{zone}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="campaign_tag"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Campaign Tag</FormLabel>
+                        <FormControl><Input placeholder="e.g. Edition 13" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="md:col-span-2 flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={captureLocation}
+                      disabled={capturingLocation}
+                      className="gap-1.5"
+                    >
+                      {capturingLocation ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <MapPin className="h-4 w-4 text-primary" />
+                      )}
+                      {capturingLocation ? 'Capturing…' : 'Capture Current Location'}
+                    </Button>
+                    <span className="text-xs text-muted-foreground">or enter manually below</span>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="gps_lat"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>GPS Latitude</FormLabel>
+                        <FormControl><Input placeholder="e.g. 9.0192" type="number" step="any" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="gps_lng"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>GPS Longitude</FormLabel>
+                        <FormControl><Input placeholder="e.g. 38.7525" type="number" step="any" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                <FormField
-                  control={form.control}
-                  name="gps_lat"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>GPS Latitude</FormLabel>
-                      <FormControl><Input placeholder="e.g. 9.0192" type="number" step="any" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="gps_lng"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>GPS Longitude</FormLabel>
-                      <FormControl><Input placeholder="e.g. 38.7525" type="number" step="any" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createLead.isPending}>
-                  {createLead.isPending ? 'Submitting...' : 'Submit Lead'}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={createLead.isPending}>
+                    {createLead.isPending ? 'Submitting...' : 'Submit Lead'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <CameraScanDialog open={scanOpen} onOpenChange={setScanOpen} onResult={handleOCRResult} />
+    </>
   );
 };
 
