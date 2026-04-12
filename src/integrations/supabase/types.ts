@@ -269,6 +269,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_lead_duplicates: {
+        Args: { _company_name?: string; _exclude_id?: string; _phone?: string }
+        Returns: {
+          assigned_rep_id: string
+          company_name: string
+          email: string
+          id: string
+          match_type: string
+          phone: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -276,6 +287,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      merge_leads: {
+        Args: { _primary_id: string; _secondary_id: string }
+        Returns: undefined
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       app_role: "admin" | "manager" | "rep"
