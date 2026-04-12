@@ -56,6 +56,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, role, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { notifications, unreadCount, markAllRead, markRead } = useNotifications();
 
   const filteredNav = navItems.filter(item => role && item.roles.includes(role));
 
@@ -109,12 +110,12 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <header className="flex h-14 items-center gap-4 border-b px-6">
           <SidebarTrigger />
           <div className="flex-1" />
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground">
-              3
-            </span>
-          </Button>
+          <NotificationBell
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onMarkAllRead={markAllRead}
+            onMarkRead={markRead}
+          />
         </header>
         <main className="flex-1 overflow-auto p-6">
           {children}
