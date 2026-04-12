@@ -241,6 +241,24 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
                     </FormItem>
                   )}
                 />
+                <div className="md:col-span-2 flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={captureLocation}
+                    disabled={capturingLocation}
+                    className="gap-1.5"
+                  >
+                    {capturingLocation ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <MapPin className="h-4 w-4 text-primary" />
+                    )}
+                    {capturingLocation ? 'Capturing…' : 'Capture Current Location'}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">or enter manually below</span>
+                </div>
                 <FormField
                   control={form.control}
                   name="gps_lat"
