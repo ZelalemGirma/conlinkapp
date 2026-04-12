@@ -3,8 +3,12 @@ import { useLeads } from '@/hooks/useLeads';
 import { useAuth } from '@/contexts/AuthContext';
 import { LEAD_CATEGORIES, LOCATION_ZONES, LEAD_STATUS_CONFIG } from '@/types';
 import LeadFormDialog from '@/components/leads/LeadFormDialog';
+import LeadDetailDialog from '@/components/leads/LeadDetailDialog';
 import LeadStatusBadge from '@/components/leads/LeadStatusBadge';
 import { Button } from '@/components/ui/button';
+import type { Database } from '@/integrations/supabase/types';
+
+type LeadRow = Database['public']['Tables']['leads']['Row'];
 import { Input } from '@/components/ui/input';
 import {
   Select,
