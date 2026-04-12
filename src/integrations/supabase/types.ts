@@ -216,6 +216,7 @@ export type Database = {
           period_start: string
           rep_id: string
           target_count: number
+          target_type: Database["public"]["Enums"]["target_type"]
           updated_at: string
         }
         Insert: {
@@ -226,6 +227,7 @@ export type Database = {
           period_start: string
           rep_id: string
           target_count?: number
+          target_type?: Database["public"]["Enums"]["target_type"]
           updated_at?: string
         }
         Update: {
@@ -236,6 +238,7 @@ export type Database = {
           period_start?: string
           rep_id?: string
           target_count?: number
+          target_type?: Database["public"]["Enums"]["target_type"]
           updated_at?: string
         }
         Relationships: []
@@ -311,6 +314,7 @@ export type Database = {
         | "wrong_number"
         | "not_reachable"
         | "not_answered"
+      target_type: "leads" | "calls" | "meetings" | "conversions"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -474,6 +478,7 @@ export const Constants = {
         "not_reachable",
         "not_answered",
       ],
+      target_type: ["leads", "calls", "meetings", "conversions"],
     },
   },
 } as const
