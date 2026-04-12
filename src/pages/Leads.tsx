@@ -30,10 +30,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Search, Phone, Mail, X, Download, FileText, Merge } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { exportLeadsCSV, exportLeadsPDF } from '@/utils/exportLeads';
+import MergeLeadsDialog from '@/components/leads/MergeLeadsDialog';
 
 const Leads = () => {
   const { role } = useAuth();
   const [formOpen, setFormOpen] = useState(false);
+  const [mergeOpen, setMergeOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<LeadRow | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState('');
