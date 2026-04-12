@@ -67,7 +67,12 @@ const Leads = () => {
             {leads?.length ?? 0} lead{leads?.length !== 1 ? 's' : ''} total
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {(role === 'admin' || role === 'manager') && (
+            <Button variant="outline" size="sm" onClick={() => setMergeOpen(true)}>
+              <Merge className="mr-1 h-4 w-4" />Merge
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => leads && exportLeadsCSV(leads)} disabled={!leads?.length}>
             <Download className="mr-1 h-4 w-4" />CSV
           </Button>
@@ -228,6 +233,7 @@ const Leads = () => {
 
       <LeadFormDialog open={formOpen} onOpenChange={setFormOpen} />
       <LeadDetailDialog lead={selectedLead} open={detailOpen} onOpenChange={setDetailOpen} />
+      <MergeLeadsDialog open={mergeOpen} onOpenChange={setMergeOpen} />
     </div>
   );
 };
