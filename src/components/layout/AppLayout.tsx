@@ -2,6 +2,8 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import conlinkLogoLight from '@/assets/conlink-logo-light.png';
+import { useNotifications } from '@/hooks/useNotifications';
+import NotificationBell from '@/components/layout/NotificationBell';
 import {
   Sidebar,
   SidebarContent,
