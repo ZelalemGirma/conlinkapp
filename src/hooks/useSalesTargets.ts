@@ -39,7 +39,7 @@ export const useCreateTarget = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: async (target: { rep_id: string; target_count: number; period_start: string; period_end: string }) => {
+    mutationFn: async (target: { rep_id: string; target_count: number; period_start: string; period_end: string; target_type?: string }) => {
       const { data, error } = await supabase.from('sales_targets').insert(target).select().single();
       if (error) throw error;
       return data;
