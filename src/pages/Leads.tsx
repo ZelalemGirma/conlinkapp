@@ -32,6 +32,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 const Leads = () => {
   const { role } = useAuth();
   const [formOpen, setFormOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<LeadRow | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
