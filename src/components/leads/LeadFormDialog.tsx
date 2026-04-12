@@ -29,6 +29,8 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { MapPin, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const leadFormSchema = z.object({
   company_name: z.string().trim().min(1, 'Company name is required').max(200),
@@ -53,7 +55,28 @@ interface LeadFormDialogProps {
 
 const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) => {
   const createLead = useCreateLead();
+  const [capturingLocation, setCapturingLocation] = useState(false);
 
+  const captureLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    setCapturingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        form.setValue('gps_lat', position.coords.latitude);
+        form.setValue('gps_lng', position.coords.longitude);
+        setCapturingLocation(false);
+        toast.success('Location captured');
+      },
+      (error) => {
+        setCapturingLocation(false);
+        toast.error('Failed to get location: ' + error.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
   const form = useForm<LeadFormValues>({
     resolver: zodResolver(leadFormSchema),
     defaultValues: {
@@ -218,6 +241,24 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
                     </FormItem>
                   )}
                 />
+                <div className="md:col-span-2 flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={captureLocation}
+                    disabled={capturingLocation}
+                    className="gap-1.5"
+                  >
+                    {capturingLocation ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <MapPin className="h-4 w-4 text-primary" />
+                    )}
+                    {capturingLocation ? 'Capturing…' : 'Capture Current Location'}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">or enter manually below</span>
+                </div>
                 <FormField
                   control={form.control}
                   name="gps_lat"
