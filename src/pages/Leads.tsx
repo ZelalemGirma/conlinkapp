@@ -26,8 +26,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Search, Phone, Mail, X } from 'lucide-react';
+import { Plus, Search, Phone, Mail, X, Download, FileText } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { exportLeadsCSV, exportLeadsPDF } from '@/utils/exportLeads';
 
 const Leads = () => {
   const { role } = useAuth();
@@ -63,10 +64,18 @@ const Leads = () => {
             {leads?.length ?? 0} lead{leads?.length !== 1 ? 's' : ''} total
           </p>
         </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Lead
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => leads && exportLeadsCSV(leads)} disabled={!leads?.length}>
+            <Download className="mr-1 h-4 w-4" />CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => leads && exportLeadsPDF(leads)} disabled={!leads?.length}>
+            <FileText className="mr-1 h-4 w-4" />PDF
+          </Button>
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Lead
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
