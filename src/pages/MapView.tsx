@@ -8,8 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { LEAD_STATUS_CONFIG, LOCATION_ZONES } from '@/types';
-import type { Lead, LeadStatus } from '@/types';
+import type { LeadStatus } from '@/types';
+import type { Database } from '@/integrations/supabase/types';
 import { Eye, Layers, MapPin } from 'lucide-react';
+
+type LeadRow = Database['public']['Tables']['leads']['Row'];
+type MappedLead = LeadRow & { mapPosition: [number, number] };
 
 const ADDIS_CENTER: [number, number] = [9.015, 38.755];
 const BRAND_COLORS = {
@@ -115,7 +119,7 @@ const createClusterIcon = (count: number) => {
   });
 };
 
-const getLeadPosition = (lead: Lead): [number, number] | null => {
+const getLeadPosition = (lead: LeadRow): [number, number] | null => {
   if (typeof lead.gps_lat === 'number' && typeof lead.gps_lng === 'number') {
     return [lead.gps_lat, lead.gps_lng];
   }
@@ -132,7 +136,7 @@ const getLeadPosition = (lead: Lead): [number, number] | null => {
   return null;
 };
 
-const getNavigationUrl = (lead: Lead) => {
+const getNavigationUrl = (lead: LeadRow) => {
   if (typeof lead.gps_lat === 'number' && typeof lead.gps_lng === 'number') {
     return `https://www.google.com/maps/dir/?api=1&destination=${lead.gps_lat},${lead.gps_lng}`;
   }
@@ -143,7 +147,7 @@ const getNavigationUrl = (lead: Lead) => {
   return `https://www.google.com/maps/search/?api=1&query=${query}`;
 };
 
-const buildLeadPopupHtml = (lead: Lead) => {
+const buildLeadPopupHtml = (lead: LeadRow) => {
   const pin = getPinConfig(lead.status);
   const companyName = escapeHtml(lead.company_name);
   const category = escapeHtml(lead.category);
@@ -189,7 +193,7 @@ const buildLeadPopupHtml = (lead: Lead) => {
   `;
 };
 
-const buildClusterPopupHtml = (zone: string, leads: Array<Lead & { position: [number, number] }>) => {
+const buildClusterPopupHtml = (zone: string, leads: MappedLead[]) => {
   const items = leads
     .slice(0, 10)
     .map((lead) => {
@@ -230,17 +234,18 @@ const MapView: React.FC = () => {
     zone: zoneFilter || undefined,
   });
 
-  const mappedLeads = useMemo(() => {
-    return allLeads
-      .map((lead) => ({
-        ...lead,
-        position: getLeadPosition(lead),
-      }))
-      .filter((lead): lead is Lead & { position: [number, number] } => Array.isArray(lead.position));
+  const mappedLeads = useMemo<MappedLead[]>(() => {
+    return allLeads.reduce<MappedLead[]>((acc, lead) => {
+      const mapPosition = getLeadPosition(lead);
+      if (mapPosition) {
+        acc.push({ ...lead, mapPosition });
+      }
+      return acc;
+    }, []);
   }, [allLeads]);
 
   const zoneClusters = useMemo(() => {
-    const clusters = new Map<string, { leads: Array<Lead & { position: [number, number] }>; center: [number, number] }>();
+    const clusters = new Map<string, { leads: MappedLead[]; center: [number, number] }>();
 
     mappedLeads.forEach((lead) => {
       const zone = lead.location_zone || 'Unknown';
@@ -277,11 +282,11 @@ const MapView: React.FC = () => {
     }));
   }, [mappedLeads]);
 
-  const visiblePositions = useMemo(() => {
+  const visiblePositions = useMemo<[number, number][]>(() => {
     if (enableClustering) {
       return Array.from(zoneClusters.values()).map((entry) => entry.center);
     }
-    return mappedLeads.map((lead) => lead.position);
+    return mappedLeads.map((lead) => lead.mapPosition);
   }, [enableClustering, mappedLeads, zoneClusters]);
 
   useEffect(() => {
@@ -348,17 +353,19 @@ const MapView: React.FC = () => {
     } else {
       mappedLeads.forEach((lead) => {
         const pin = getPinConfig(lead.status);
-        L.marker(lead.position, { icon: createColorIcon(pin.color, pin.glow) })
+        L.marker(lead.mapPosition, { icon: createColorIcon(pin.color, pin.glow) })
           .bindPopup(buildLeadPopupHtml(lead), { maxWidth: 300 })
           .addTo(layerGroup);
       });
     }
 
-    if (visiblePositions.length > 0) {
+    if (visiblePositions.length > 1) {
       map.fitBounds(L.latLngBounds(visiblePositions), {
         padding: [28, 28],
         maxZoom: enableClustering ? 12 : 14,
       });
+    } else if (visiblePositions.length === 1) {
+      map.setView(visiblePositions[0], enableClustering ? 12 : 14);
     } else {
       map.setView(ADDIS_CENTER, 12);
     }
