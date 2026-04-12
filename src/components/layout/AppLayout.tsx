@@ -31,6 +31,7 @@ import {
   UserPlus,
   FileBarChart,
   Trophy,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -53,6 +54,7 @@ const navItems: NavItem[] = [
   { title: 'Team', icon: Users, path: '/team', roles: ['admin', 'manager'] },
   { title: 'User Management', icon: UserPlus, path: '/users', roles: ['admin'] },
   { title: 'Settings', icon: Settings, path: '/settings', roles: ['admin'] },
+  { title: 'User Manual', icon: BookOpen, path: '/manual', roles: ['admin', 'manager', 'rep'] },
 ];
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
