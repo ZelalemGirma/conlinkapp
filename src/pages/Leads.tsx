@@ -3,8 +3,12 @@ import { useLeads } from '@/hooks/useLeads';
 import { useAuth } from '@/contexts/AuthContext';
 import { LEAD_CATEGORIES, LOCATION_ZONES, LEAD_STATUS_CONFIG } from '@/types';
 import LeadFormDialog from '@/components/leads/LeadFormDialog';
+import LeadDetailDialog from '@/components/leads/LeadDetailDialog';
 import LeadStatusBadge from '@/components/leads/LeadStatusBadge';
 import { Button } from '@/components/ui/button';
+import type { Database } from '@/integrations/supabase/types';
+
+type LeadRow = Database['public']['Tables']['leads']['Row'];
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -28,6 +32,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 const Leads = () => {
   const { role } = useAuth();
   const [formOpen, setFormOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<LeadRow | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -145,7 +151,7 @@ const Leads = () => {
                   </TableRow>
                 ) : (
                   leads?.map(lead => (
-                    <TableRow key={lead.id} className="group">
+                    <TableRow key={lead.id} className="group cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedLead(lead); setDetailOpen(true); }}>
                       <TableCell>
                         <div className="font-medium">{lead.company_name}</div>
                         {lead.specific_address && (
@@ -160,6 +166,7 @@ const Leads = () => {
                           {lead.phone && (
                             <a
                               href={`tel:${lead.phone}`}
+                              onClick={e => e.stopPropagation()}
                               className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                             >
                               <Phone className="h-3 w-3" />
@@ -169,6 +176,7 @@ const Leads = () => {
                           {lead.email && (
                             <a
                               href={`mailto:${lead.email}`}
+                              onClick={e => e.stopPropagation()}
                               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
                             >
                               <Mail className="h-3 w-3" />
@@ -203,6 +211,7 @@ const Leads = () => {
       </Card>
 
       <LeadFormDialog open={formOpen} onOpenChange={setFormOpen} />
+      <LeadDetailDialog lead={selectedLead} open={detailOpen} onOpenChange={setDetailOpen} />
     </div>
   );
 };
