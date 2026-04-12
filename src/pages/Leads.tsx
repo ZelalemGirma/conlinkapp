@@ -151,7 +151,7 @@ const Leads = () => {
                   </TableRow>
                 ) : (
                   leads?.map(lead => (
-                    <TableRow key={lead.id} className="group">
+                    <TableRow key={lead.id} className="group cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedLead(lead); setDetailOpen(true); }}>
                       <TableCell>
                         <div className="font-medium">{lead.company_name}</div>
                         {lead.specific_address && (
@@ -166,6 +166,7 @@ const Leads = () => {
                           {lead.phone && (
                             <a
                               href={`tel:${lead.phone}`}
+                              onClick={e => e.stopPropagation()}
                               className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                             >
                               <Phone className="h-3 w-3" />
@@ -175,6 +176,7 @@ const Leads = () => {
                           {lead.email && (
                             <a
                               href={`mailto:${lead.email}`}
+                              onClick={e => e.stopPropagation()}
                               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
                             >
                               <Mail className="h-3 w-3" />
