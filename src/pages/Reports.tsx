@@ -4,20 +4,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfiles } from '@/hooks/useProfiles';
 import { LEAD_CATEGORIES, LOCATION_ZONES, LEAD_STATUS_CONFIG } from '@/types';
-import type { LeadStatus, LeadCategory } from '@/types';
+import type { LeadStatus } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { CalendarIcon, Download, FileText, Users, TrendingUp, MessageSquare, RotateCcw } from 'lucide-react';
+import { format, differenceInDays } from 'date-fns';
+import { CalendarIcon, Download, FileText, RotateCcw } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
+
+import MultiSelectFilter from '@/components/reports/MultiSelectFilter';
+import ReportKPICards from '@/components/reports/ReportKPICards';
+import ConversionFunnel from '@/components/reports/ConversionFunnel';
+import ActivityVolumeChart from '@/components/reports/ActivityVolumeChart';
+import RepSuccessTable from '@/components/reports/RepSuccessTable';
 
 type LeadRow = Database['public']['Tables']['leads']['Row'];
 type InteractionRow = Database['public']['Tables']['interaction_logs']['Row'];
@@ -29,14 +34,14 @@ const Reports: React.FC = () => {
   const { data: profiles } = useProfiles();
   const isRepOnly = role === 'rep';
 
-  // Filters
+  // Multi-select filters
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
-  const [repFilter, setRepFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [zoneFilter, setZoneFilter] = useState<string>('all');
-  const [campaignFilter, setCampaignFilter] = useState<string>('');
+  const [selectedReps, setSelectedReps] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedZones, setSelectedZones] = useState<string[]>([]);
+  const [campaignFilter, setCampaignFilter] = useState('');
 
   // Fetch all leads
   const { data: allLeads = [], isLoading: leadsLoading } = useQuery({
@@ -58,7 +63,7 @@ const Reports: React.FC = () => {
     },
   });
 
-  // Fetch all reps for filter dropdown
+  // Fetch reps
   const { data: reps = [] } = useQuery({
     queryKey: ['reports-reps'],
     queryFn: async () => {
@@ -73,15 +78,24 @@ const Reports: React.FC = () => {
     return (profiles ?? []).filter(p => repUserIds.includes(p.user_id));
   }, [reps, profiles]);
 
-  // Apply role-based + filter logic
+  const getRepName = (userId: string) => {
+    const p = (profiles ?? []).find(pr => pr.user_id === userId);
+    return p?.full_name || 'Unknown';
+  };
+
+  // Filter options
+  const statusOptions = ALL_STATUSES.map(s => ({ value: s, label: LEAD_STATUS_CONFIG[s].label }));
+  const categoryOptions = LEAD_CATEGORIES.map(c => ({ value: c, label: c }));
+  const zoneOptions = LOCATION_ZONES.map(z => ({ value: z, label: z }));
+  const repOptions = repProfiles.map(r => ({ value: r.user_id, label: r.full_name || 'Unnamed' }));
+
+  // Apply filters
   const filteredLeads = useMemo(() => {
     let leads = allLeads;
 
-    // Role-based: reps only see their own
     if (isRepOnly && user) {
       leads = leads.filter(l => l.created_by === user.id || l.assigned_rep_id === user.id);
     }
-
     if (dateFrom) {
       leads = leads.filter(l => new Date(l.created_at) >= dateFrom);
     }
@@ -90,17 +104,17 @@ const Reports: React.FC = () => {
       end.setHours(23, 59, 59, 999);
       leads = leads.filter(l => new Date(l.created_at) <= end);
     }
-    if (repFilter !== 'all') {
-      leads = leads.filter(l => l.created_by === repFilter || l.assigned_rep_id === repFilter);
+    if (selectedReps.length > 0) {
+      leads = leads.filter(l => selectedReps.includes(l.created_by) || (l.assigned_rep_id && selectedReps.includes(l.assigned_rep_id)));
     }
-    if (statusFilter !== 'all') {
-      leads = leads.filter(l => l.status === statusFilter);
+    if (selectedStatuses.length > 0) {
+      leads = leads.filter(l => selectedStatuses.includes(l.status));
     }
-    if (categoryFilter !== 'all') {
-      leads = leads.filter(l => l.category === categoryFilter);
+    if (selectedCategories.length > 0) {
+      leads = leads.filter(l => selectedCategories.includes(l.category));
     }
-    if (zoneFilter !== 'all') {
-      leads = leads.filter(l => l.location_zone === zoneFilter);
+    if (selectedZones.length > 0) {
+      leads = leads.filter(l => l.location_zone && selectedZones.includes(l.location_zone));
     }
     if (campaignFilter.trim()) {
       const tag = campaignFilter.trim().toLowerCase();
@@ -108,49 +122,110 @@ const Reports: React.FC = () => {
     }
 
     return leads;
-  }, [allLeads, isRepOnly, user, dateFrom, dateTo, repFilter, statusFilter, categoryFilter, zoneFilter, campaignFilter]);
+  }, [allLeads, isRepOnly, user, dateFrom, dateTo, selectedReps, selectedStatuses, selectedCategories, selectedZones, campaignFilter]);
 
-  // Filtered interaction count
+  // Computed KPIs
   const filteredLeadIds = useMemo(() => new Set(filteredLeads.map(l => l.id)), [filteredLeads]);
-  const filteredInteractionCount = useMemo(
-    () => allInteractions.filter(i => filteredLeadIds.has(i.lead_id)).length,
+  const filteredInteractions = useMemo(
+    () => allInteractions.filter(i => filteredLeadIds.has(i.lead_id)),
     [allInteractions, filteredLeadIds]
   );
 
-  // Summary stats
   const totalLeads = filteredLeads.length;
-  const conversions = filteredLeads.filter(l => l.status === 'deal_closed').length;
-  const conversionRate = totalLeads > 0 ? ((conversions / totalLeads) * 100).toFixed(1) : '0.0';
+  const closedDeals = filteredLeads.filter(l => l.status === 'deal_closed').length;
+  const conversionRate = totalLeads > 0 ? ((closedDeals / totalLeads) * 100).toFixed(1) : '0.0';
 
-  const getRepName = (userId: string) => {
-    const p = (profiles ?? []).find(p => p.user_id === userId);
-    return p?.full_name || 'Unknown';
-  };
+  // Success rate: deals closed / total assigned (non-draft, non-pending)
+  const assignedLeads = filteredLeads.filter(l => !['draft', 'pending'].includes(l.status));
+  const successRate = assignedLeads.length > 0
+    ? ((closedDeals / assignedLeads.length) * 100).toFixed(1)
+    : '0.0';
+
+  // Avg approval time: leads that went from created → approved
+  const avgApprovalDays = useMemo(() => {
+    const approved = filteredLeads.filter(l => !['draft', 'pending'].includes(l.status));
+    if (approved.length === 0) return '—';
+    const totalDays = approved.reduce((sum, l) => {
+      const created = new Date(l.created_at);
+      const updated = new Date(l.updated_at);
+      return sum + Math.max(0, differenceInDays(updated, created));
+    }, 0);
+    return (totalDays / approved.length).toFixed(1);
+  }, [filteredLeads]);
+
+  // Conversion funnel
+  const funnelData = useMemo(() => {
+    const total = filteredLeads.length;
+    const approved = filteredLeads.filter(l => !['draft', 'pending'].includes(l.status)).length;
+    const contacted = filteredLeads.filter(l =>
+      ['meeting_scheduled', 'profile_sent', 'needs_followup', 'call_me_back', 'deal_closed'].includes(l.status)
+    ).length;
+    const closed = closedDeals;
+    return [
+      { stage: 'New Leads', count: total, color: 'hsl(var(--primary))' },
+      { stage: 'Approved', count: approved, color: 'hsl(var(--info))' },
+      { stage: 'Contacted', count: contacted, color: 'hsl(var(--warning))' },
+      { stage: 'Deal Closed', count: closed, color: 'hsl(var(--success))' },
+    ];
+  }, [filteredLeads, closedDeals]);
+
+  // Activity volume per rep
+  const activityData = useMemo(() => {
+    const repMap = new Map<string, { calls: number; visits: number; meetings: number; emails: number; telegrams: number }>();
+    filteredInteractions.forEach(i => {
+      const name = getRepName(i.created_by);
+      if (!repMap.has(name)) repMap.set(name, { calls: 0, visits: 0, meetings: 0, emails: 0, telegrams: 0 });
+      const entry = repMap.get(name)!;
+      if (i.type === 'phone') entry.calls++;
+      else if (i.type === 'site_visit') entry.visits++;
+      else if (i.type === 'meeting') entry.meetings++;
+      else if (i.type === 'email') entry.emails++;
+      else if (i.type === 'telegram') entry.telegrams++;
+    });
+    return Array.from(repMap.entries()).map(([rep, counts]) => ({ rep, ...counts }));
+  }, [filteredInteractions, profiles]);
+
+  // Rep success table
+  const repSuccessData = useMemo(() => {
+    const repMap = new Map<string, { assigned: number; closed: number }>();
+    filteredLeads.forEach(l => {
+      const repId = l.assigned_rep_id || l.created_by;
+      const name = getRepName(repId);
+      if (!repMap.has(name)) repMap.set(name, { assigned: 0, closed: 0 });
+      const entry = repMap.get(name)!;
+      if (!['draft', 'pending'].includes(l.status)) entry.assigned++;
+      if (l.status === 'deal_closed') entry.closed++;
+    });
+    return Array.from(repMap.entries())
+      .map(([rep, { assigned, closed }]) => ({
+        rep,
+        assigned,
+        closed,
+        rate: assigned > 0 ? (closed / assigned) * 100 : 0,
+      }))
+      .sort((a, b) => b.rate - a.rate);
+  }, [filteredLeads, profiles]);
 
   const resetFilters = () => {
     setDateFrom(undefined);
     setDateTo(undefined);
-    setRepFilter('all');
-    setStatusFilter('all');
-    setCategoryFilter('all');
-    setZoneFilter('all');
+    setSelectedReps([]);
+    setSelectedStatuses([]);
+    setSelectedCategories([]);
+    setSelectedZones([]);
     setCampaignFilter('');
   };
+
+  const hasFilters = dateFrom || dateTo || selectedReps.length || selectedStatuses.length || selectedCategories.length || selectedZones.length || campaignFilter;
 
   // Export CSV
   const exportCSV = () => {
     const headers = ['Company', 'Contact', 'Phone', 'Email', 'Category', 'Status', 'Zone', 'Campaign', 'Created', 'Rep'];
     const rows = filteredLeads.map(l => [
-      l.company_name,
-      l.contact_person,
-      l.phone ?? '',
-      l.email ?? '',
-      l.category,
+      l.company_name, l.contact_person, l.phone ?? '', l.email ?? '', l.category,
       LEAD_STATUS_CONFIG[l.status as LeadStatus]?.label ?? l.status,
-      l.location_zone ?? '',
-      l.campaign_tag ?? '',
-      format(new Date(l.created_at), 'yyyy-MM-dd'),
-      getRepName(l.created_by),
+      l.location_zone ?? '', l.campaign_tag ?? '',
+      format(new Date(l.created_at), 'yyyy-MM-dd'), getRepName(l.created_by),
     ]);
     const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -162,7 +237,7 @@ const Reports: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Export PDF (simple print-based)
+  // Export PDF
   const exportPDF = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -174,7 +249,7 @@ const Reports: React.FC = () => {
     </head><body>
       <h1>Conlink CRM — Report</h1>
       <p>Generated: ${format(new Date(), 'PPP')}</p>
-      <div class="summary"><div class="card"><strong>Total Leads:</strong> ${totalLeads}</div><div class="card"><strong>Conversion Rate:</strong> ${conversionRate}%</div><div class="card"><strong>Interactions:</strong> ${filteredInteractionCount}</div></div>
+      <div class="summary"><div class="card"><strong>Total Leads:</strong> ${totalLeads}</div><div class="card"><strong>Conversion:</strong> ${conversionRate}%</div><div class="card"><strong>Interactions:</strong> ${filteredInteractions.length}</div><div class="card"><strong>Success Rate:</strong> ${successRate}%</div></div>
       <table><thead><tr><th>Company</th><th>Contact</th><th>Category</th><th>Status</th><th>Zone</th><th>Created</th></tr></thead><tbody>${tableRows}</tbody></table>
     </body></html>`);
     printWindow.document.close();
@@ -185,6 +260,7 @@ const Reports: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Global Reports</h1>
@@ -202,18 +278,20 @@ const Reports: React.FC = () => {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Multi-Select Filters */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Filters</CardTitle>
-            <Button variant="ghost" size="sm" onClick={resetFilters}>
-              <RotateCcw className="mr-1 h-3 w-3" /> Reset
-            </Button>
+            {hasFilters && (
+              <Button variant="ghost" size="sm" onClick={resetFilters}>
+                <RotateCcw className="mr-1 h-3 w-3" /> Reset
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {/* Date From */}
             <div className="space-y-1">
               <Label className="text-xs">From</Label>
@@ -221,7 +299,7 @@ const Reports: React.FC = () => {
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className={cn('w-full justify-start text-left font-normal text-xs', !dateFrom && 'text-muted-foreground')}>
                     <CalendarIcon className="mr-1 h-3 w-3" />
-                    {dateFrom ? format(dateFrom, 'MMM dd') : 'Start'}
+                    {dateFrom ? format(dateFrom, 'MMM dd, yyyy') : 'Start date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -229,6 +307,7 @@ const Reports: React.FC = () => {
                 </PopoverContent>
               </Popover>
             </div>
+
             {/* Date To */}
             <div className="space-y-1">
               <Label className="text-xs">To</Label>
@@ -236,7 +315,7 @@ const Reports: React.FC = () => {
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className={cn('w-full justify-start text-left font-normal text-xs', !dateTo && 'text-muted-foreground')}>
                     <CalendarIcon className="mr-1 h-3 w-3" />
-                    {dateTo ? format(dateTo, 'MMM dd') : 'End'}
+                    {dateTo ? format(dateTo, 'MMM dd, yyyy') : 'End date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -244,114 +323,89 @@ const Reports: React.FC = () => {
                 </PopoverContent>
               </Popover>
             </div>
-            {/* Sales Rep */}
+
+            {/* Multi-select: Status */}
+            <div className="space-y-1">
+              <Label className="text-xs">Status</Label>
+              <MultiSelectFilter
+                label="All Statuses"
+                options={statusOptions}
+                selected={selectedStatuses}
+                onChange={setSelectedStatuses}
+              />
+            </div>
+
+            {/* Multi-select: Category */}
+            <div className="space-y-1">
+              <Label className="text-xs">Category</Label>
+              <MultiSelectFilter
+                label="All Categories"
+                options={categoryOptions}
+                selected={selectedCategories}
+                onChange={setSelectedCategories}
+              />
+            </div>
+
+            {/* Multi-select: Reps (admin/manager only) */}
             {!isRepOnly && (
               <div className="space-y-1">
                 <Label className="text-xs">Sales Rep</Label>
-                <Select value={repFilter} onValueChange={setRepFilter}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Reps</SelectItem>
-                    {repProfiles.map(r => (
-                      <SelectItem key={r.user_id} value={r.user_id}>{r.full_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MultiSelectFilter
+                  label="All Reps"
+                  options={repOptions}
+                  selected={selectedReps}
+                  onChange={setSelectedReps}
+                />
               </div>
             )}
-            {/* Status */}
-            <div className="space-y-1">
-              <Label className="text-xs">Status</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  {ALL_STATUSES.map(s => (
-                    <SelectItem key={s} value={s}>{LEAD_STATUS_CONFIG[s].label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {/* Category */}
-            <div className="space-y-1">
-              <Label className="text-xs">Category</Label>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {LEAD_CATEGORIES.map(c => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {/* Zone */}
+
+            {/* Multi-select: Zone */}
             <div className="space-y-1">
               <Label className="text-xs">Zone</Label>
-              <Select value={zoneFilter} onValueChange={setZoneFilter}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Zones</SelectItem>
-                  {LOCATION_ZONES.map(z => (
-                    <SelectItem key={z} value={z}>{z}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MultiSelectFilter
+                label="All Zones"
+                options={zoneOptions}
+                selected={selectedZones}
+                onChange={setSelectedZones}
+              />
             </div>
-          </div>
-          {/* Campaign tag */}
-          <div className="mt-3 max-w-xs">
-            <Label className="text-xs">Campaign Tag</Label>
-            <Input
-              placeholder="e.g. Edition 13"
-              value={campaignFilter}
-              onChange={e => setCampaignFilter(e.target.value)}
-              className="h-8 text-xs"
-            />
+
+            {/* Campaign tag */}
+            <div className="space-y-1">
+              <Label className="text-xs">Campaign Tag</Label>
+              <Input
+                placeholder="e.g. Edition 13"
+                value={campaignFilter}
+                onChange={e => setCampaignFilter(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Users className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Leads</p>
-              <p className="text-2xl font-bold">{isLoading ? '—' : totalLeads}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-success/10 flex items-center justify-center">
-              <TrendingUp className="h-6 w-6 text-success" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Conversion Rate</p>
-              <p className="text-2xl font-bold">{isLoading ? '—' : `${conversionRate}%`}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-info/10 flex items-center justify-center">
-              <MessageSquare className="h-6 w-6 text-info" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Interactions</p>
-              <p className="text-2xl font-bold">{isLoading ? '—' : filteredInteractionCount}</p>
-            </div>
-          </CardContent>
-        </Card>
+      {/* KPI Cards */}
+      <ReportKPICards
+        totalLeads={totalLeads}
+        conversionRate={conversionRate}
+        interactionCount={filteredInteractions.length}
+        avgApprovalDays={avgApprovalDays}
+        successRate={successRate}
+        isLoading={isLoading}
+      />
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ConversionFunnel data={funnelData} />
+        <ActivityVolumeChart data={activityData} />
       </div>
+
+      {/* Success Rate Table */}
+      {!isRepOnly && <RepSuccessTable data={repSuccessData} />}
 
       {/* Data Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-2">
           <CardTitle className="text-base">Filtered Results ({filteredLeads.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -359,14 +413,14 @@ const Reports: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Zone</TableHead>
-                  <TableHead>Campaign</TableHead>
-                  <TableHead>Created</TableHead>
-                  {!isRepOnly && <TableHead>Rep</TableHead>}
+                  <TableHead className="text-xs">Company</TableHead>
+                  <TableHead className="text-xs">Contact</TableHead>
+                  <TableHead className="text-xs">Category</TableHead>
+                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">Zone</TableHead>
+                  <TableHead className="text-xs">Campaign</TableHead>
+                  <TableHead className="text-xs">Created</TableHead>
+                  {!isRepOnly && <TableHead className="text-xs">Rep</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -377,15 +431,15 @@ const Reports: React.FC = () => {
                 ) : (
                   filteredLeads.slice(0, 100).map(lead => (
                     <TableRow key={lead.id}>
-                      <TableCell className="font-medium">{lead.company_name}</TableCell>
-                      <TableCell>{lead.contact_person}</TableCell>
+                      <TableCell className="font-medium text-xs">{lead.company_name}</TableCell>
+                      <TableCell className="text-xs">{lead.contact_person}</TableCell>
                       <TableCell className="text-xs">{lead.category}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className={cn('text-xs', LEAD_STATUS_CONFIG[lead.status as LeadStatus]?.color)}>
+                        <Badge variant="secondary" className={cn('text-[10px]', LEAD_STATUS_CONFIG[lead.status as LeadStatus]?.color)}>
                           {LEAD_STATUS_CONFIG[lead.status as LeadStatus]?.label ?? lead.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{lead.location_zone ?? '—'}</TableCell>
+                      <TableCell className="text-xs">{lead.location_zone ?? '—'}</TableCell>
                       <TableCell className="text-xs">{lead.campaign_tag || '—'}</TableCell>
                       <TableCell className="text-xs">{format(new Date(lead.created_at), 'MMM dd, yyyy')}</TableCell>
                       {!isRepOnly && <TableCell className="text-xs">{getRepName(lead.created_by)}</TableCell>}
