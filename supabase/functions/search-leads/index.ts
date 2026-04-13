@@ -170,9 +170,12 @@ Deno.serve(async (req) => {
           const html = await fetchPage(dUrl);
           if (!html) return "";
           const phones = extractPhoneNumbers(html);
+          const emails = extractEmails(html);
           const phoneInfo =
             phones.length > 0 ? `\nEXTRACTED PHONE NUMBERS: ${phones.join(", ")}` : "";
-          return `--- DETAIL PAGE: ${dUrl} ---${phoneInfo}\n${stripHtml(html)}`;
+          const emailInfo =
+            emails.length > 0 ? `\nEXTRACTED EMAILS: ${emails.join(", ")}` : "";
+          return `--- DETAIL PAGE: ${dUrl} ---${phoneInfo}${emailInfo}\n${stripHtml(html)}`;
         })
       );
       detailTexts.push(...results.filter(Boolean));
