@@ -73,14 +73,14 @@ Given raw website text, extract ALL potential business leads (companies) you can
 
 For each company found, extract:
 - company_name: The company's legal/trade name
-- primary_phone: Main phone/mobile number
-- secondary_phone: Alternative phone if available
+- primary_phone: Main phone/mobile number. IMPORTANT: Ethiopian phone numbers must be complete — they should have 10 digits after the country code (e.g., +251 911 234 567). If a number appears truncated or incomplete (e.g., "+251 93 99 28" which is too short), set it to empty string "" rather than storing a partial number. Only include numbers that look complete and valid.
+- secondary_phone: Alternative phone if available (same completeness rules apply)
 - email: Business email
 - address: Physical address
 - location_zone: District/area name if identifiable (e.g., Bole, Kirkos, Yeka for Addis Ababa)
 - category: Best match from these 16 categories: ${CATEGORIES.join(", ")}
 - relevance_score: 1-100 score of how well the company fits the CONSTRUCTION industry
-- reasoning: Brief explanation of categorization and relevance (e.g., "Matched to 'Building Materials' based on keyword 'Cement' found on site")
+- reasoning: Brief explanation of categorization and relevance (e.g., "Matched to 'Building Materials' based on keyword 'Cement' found on site"). If the phone number was incomplete/truncated on the source, mention that.
 - priority: "high" if relevance_score >= 60, "medium" if 30-59, "low" if < 30
 
 If the company is clearly NOT construction-related (bakery, retail shop, restaurant, etc.), set priority to "low" and relevance_score below 30.
