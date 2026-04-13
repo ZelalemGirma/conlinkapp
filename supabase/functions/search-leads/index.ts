@@ -230,6 +230,11 @@ PHONE NUMBER RULES:
 2. Ethiopian numbers: 10 digits with 0 prefix or +251 format. Never guess missing digits.
 3. If phone is incomplete, leave empty.
 
+EMAIL RULES:
+1. Lines with "EXTRACTED EMAILS:" are most reliable — always prefer these.
+2. Use real business emails only. Ignore generic ones like info@example.com or noreply@.
+3. If no email found, leave empty.
+
 PRIORITY:
 - "high": relevance_score >= 60 AND matches a category well
 - "medium": relevance_score 30-59
