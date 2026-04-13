@@ -143,8 +143,8 @@ const Leads = () => {
         </CardContent>
       </Card>
 
-      {/* Table */}
-      <Card>
+      {/* Table - Desktop */}
+      <Card className="hidden lg:block">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
@@ -190,45 +190,24 @@ const Leads = () => {
                         <div>{lead.contact_person}</div>
                         <div className="flex items-center gap-2 mt-0.5">
                           {lead.phone && (
-                            <a
-                              href={`tel:${lead.phone}`}
-                              onClick={e => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                            >
-                              <Phone className="h-3 w-3" />
-                              {lead.phone}
+                            <a href={`tel:${lead.phone}`} onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                              <Phone className="h-3 w-3" />{lead.phone}
                             </a>
                           )}
                           {lead.email && (
-                            <a
-                              href={`mailto:${lead.email}`}
-                              onClick={e => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
-                            >
+                            <a href={`mailto:${lead.email}`} onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary">
                               <Mail className="h-3 w-3" />
                             </a>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <span className="text-xs">{lead.category}</span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">{lead.location_zone || '—'}</span>
-                      </TableCell>
-                      <TableCell>
-                        <LeadStatusBadge status={lead.status} />
-                      </TableCell>
-                      <TableCell>
-                        <LeadHealthIndicator updatedAt={lead.updated_at} status={lead.status} />
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-xs text-muted-foreground">{lead.campaign_tag || '—'}</span>
-                      </TableCell>
+                      <TableCell><span className="text-xs">{lead.category}</span></TableCell>
+                      <TableCell><span className="text-sm">{lead.location_zone || '—'}</span></TableCell>
+                      <TableCell><LeadStatusBadge status={lead.status} /></TableCell>
+                      <TableCell><LeadHealthIndicator updatedAt={lead.updated_at} status={lead.status} /></TableCell>
+                      <TableCell><span className="text-xs text-muted-foreground">{lead.campaign_tag || '—'}</span></TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" className="text-xs">
-                          View
-                        </Button>
+                        <Button variant="ghost" size="sm" className="text-xs">View</Button>
                       </TableCell>
                     </TableRow>
                   ))
@@ -238,6 +217,56 @@ const Leads = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Card list - Tablet & Mobile */}
+      <div className="lg:hidden space-y-3">
+        {isLoading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i}><CardContent className="p-4"><Skeleton className="h-16 w-full" /></CardContent></Card>
+          ))
+        ) : leads?.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground">
+              {hasFilters ? 'No leads match your filters.' : 'No leads yet. Click "New Lead" to create one.'}
+            </CardContent>
+          </Card>
+        ) : (
+          leads?.map(lead => (
+            <Card
+              key={lead.id}
+              className="cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => { setSelectedLead(lead); setDetailOpen(true); }}
+            >
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{lead.company_name}</div>
+                    {lead.contact_person && <div className="text-sm text-muted-foreground">{lead.contact_person}</div>}
+                  </div>
+                  <LeadStatusBadge status={lead.status} />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-muted-foreground">{lead.category}</span>
+                  {lead.location_zone && <span className="text-muted-foreground">• {lead.location_zone}</span>}
+                  <LeadHealthIndicator updatedAt={lead.updated_at} status={lead.status} />
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-xs">
+                  {lead.phone && (
+                    <a href={`tel:${lead.phone}`} onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 text-primary hover:underline">
+                      <Phone className="h-3 w-3" />{lead.phone}
+                    </a>
+                  )}
+                  {lead.email && (
+                    <a href={`mailto:${lead.email}`} onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 text-muted-foreground hover:text-primary">
+                      <Mail className="h-3 w-3" />{lead.email}
+                    </a>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
 
       {/* Vetting Queue - admin/manager only */}
       {(role === 'admin' || role === 'manager') && <VettingQueue />}
