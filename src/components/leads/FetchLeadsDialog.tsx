@@ -67,6 +67,23 @@ const QUICK_FETCH_SOURCES = [
       { label: 'Real Estate Members', code: 'real-estate' },
     ],
   },
+  {
+    name: 'ezega',
+    label: 'Ezega Business Guide',
+    baseUrl: 'https://businessguide.ezega.com/Category/Default.aspx?cid=',
+    categories: [
+      { label: 'Construction & Building', code: '37' },
+      { label: 'Engineering', code: '53' },
+      { label: 'Real Estate', code: '105' },
+      { label: 'Electrical & Electronics', code: '50' },
+      { label: 'Mining & Metals', code: '87' },
+      { label: 'Machinery & Equipment', code: '82' },
+      { label: 'Transport & Logistics', code: '126' },
+      { label: 'Manufacturing', code: '84' },
+      { label: 'Consulting Services', code: '40' },
+      { label: 'Solar & Energy', code: '52' },
+    ],
+  },
 ];
 
 const PRIORITY_COLORS = {
