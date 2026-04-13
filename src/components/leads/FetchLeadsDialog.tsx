@@ -437,6 +437,7 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
                 </Button>
               </CollapsibleContent>
             </Collapsible>
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>
