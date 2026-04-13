@@ -287,19 +287,22 @@ Return results as a JSON array under the key "leads".`;
       console.error("Failed to parse AI response:", e);
     }
 
-    const normalizedLeads = leads.map((l: any) => ({
-      company_name: l.company_name || "",
-      contact_person: "",
-      phone: l.primary_phone || "",
-      secondary_phone: l.secondary_phone || "",
-      email: l.email || "",
-      address: l.address || "",
-      location_zone: l.location_zone || "",
-      category: CATEGORIES.includes(l.category) ? l.category : "",
-      relevance_score: Math.max(1, Math.min(100, l.relevance_score || 0)),
-      ai_reasoning: l.reasoning || "",
-      priority: ["high", "medium", "low"].includes(l.priority) ? l.priority : "medium",
-    }));
+    const normalizedLeads = leads
+      .map((l: any) => ({
+        company_name: l.company_name || "",
+        contact_person: "",
+        phone: l.primary_phone || "",
+        secondary_phone: l.secondary_phone || "",
+        email: l.email || "",
+        address: l.address || "",
+        location_zone: l.location_zone || "",
+        category: CATEGORIES.includes(l.category) ? l.category : "",
+        relevance_score: Math.max(1, Math.min(100, l.relevance_score || 0)),
+        ai_reasoning: l.reasoning || "",
+        priority: ["high", "medium", "low"].includes(l.priority) ? l.priority : "medium",
+      }))
+      // Only keep leads that have at least a phone or email
+      .filter((l: any) => l.phone.trim() !== "" || l.email.trim() !== "");
 
     if (normalizedLeads.length === 0) {
       normalizedLeads.push({
@@ -312,7 +315,7 @@ Return results as a JSON array under the key "leads".`;
         location_zone: "",
         category: "",
         relevance_score: 0,
-        ai_reasoning: "No leads could be extracted from this page.",
+        ai_reasoning: "No leads with phone or email could be extracted from this page.",
         priority: "low",
       });
     }
