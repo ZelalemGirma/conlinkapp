@@ -47,6 +47,31 @@ function extractPhoneNumbers(html: string): string[] {
   return [...new Set(phones)];
 }
 
+function extractEmails(html: string): string[] {
+  const emails: string[] = [];
+  let m;
+
+  // mailto: links
+  const mailtoRegex = /href="mailto:([^"?]+)"/gi;
+  while ((m = mailtoRegex.exec(html)) !== null) emails.push(m[1].trim().toLowerCase());
+
+  // data-email attributes
+  const dataRegex = /data-email[=:]"?([^">\s]+)/gi;
+  while ((m = dataRegex.exec(html)) !== null) emails.push(m[1].trim().toLowerCase());
+
+  // Email pattern in visible text
+  const stripped = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
+  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+  while ((m = emailRegex.exec(stripped)) !== null) {
+    const e = m[0].toLowerCase();
+    if (!e.endsWith(".png") && !e.endsWith(".jpg") && !e.endsWith(".gif") && !e.includes("example.com")) {
+      emails.push(e);
+    }
+  }
+
+  return [...new Set(emails)];
+}
+
 function extractUrls(html: string, baseOrigin: string): string[] {
   const regex = /href="(https?:\/\/[^"]+)"/gi;
   const urls = new Set<string>();

@@ -218,7 +218,7 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
                 </div>
 
                 {/* Results list */}
-                <ScrollArea className="flex-1 rounded border">
+                <ScrollArea className="max-h-[40vh] rounded border">
                   <div className="divide-y">
                     {searchResults.map((lead, idx) => (
                       <label
@@ -237,7 +237,7 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
                               {lead.priority}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
                             <span className="flex items-center gap-0.5">
                               <Star className="h-3 w-3 text-warning" />
                               {lead.relevance_score}/100
@@ -246,6 +246,7 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
                               <Badge variant="outline" className="text-[10px]">{lead.category}</Badge>
                             )}
                             {lead.phone && <span>📞 {lead.phone}</span>}
+                            {lead.email && <span>✉️ {lead.email}</span>}
                           </div>
                           <p className="text-[11px] text-muted-foreground truncate">{lead.ai_reasoning}</p>
                         </div>
