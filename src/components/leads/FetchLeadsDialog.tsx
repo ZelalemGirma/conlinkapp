@@ -17,19 +17,56 @@ interface FetchLeadsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const MERKATO_CATEGORIES = [
-  { label: 'Building Material Suppliers', code: '1041' },
-  { label: 'Building & Construction', code: '1001' },
-  { label: 'Electrical & Electronics', code: '1006' },
-  { label: 'Metal & Steel', code: '1024' },
-  { label: 'Engineering Services', code: '1007' },
-  { label: 'Real Estate & Property', code: '1034' },
-  { label: 'Machinery & Equipment', code: '1021' },
-  { label: 'Solar & Renewable Energy', code: '1036' },
-  { label: 'Consulting Firms', code: '1005' },
-  { label: 'Interior Design & Furniture', code: '1016' },
-  { label: 'Transport & Logistics', code: '1043' },
-  { label: 'Mining & Geological', code: '1025' },
+const QUICK_FETCH_SOURCES = [
+  {
+    name: '2merkato',
+    label: '2merkato.com',
+    baseUrl: 'https://www.2merkato.com/directory/',
+    categories: [
+      { label: 'Building Material Suppliers', code: '1041' },
+      { label: 'Building & Construction', code: '1001' },
+      { label: 'Electrical & Electronics', code: '1006' },
+      { label: 'Metal & Steel', code: '1024' },
+      { label: 'Engineering Services', code: '1007' },
+      { label: 'Real Estate & Property', code: '1034' },
+      { label: 'Machinery & Equipment', code: '1021' },
+      { label: 'Solar & Renewable Energy', code: '1036' },
+      { label: 'Consulting Firms', code: '1005' },
+      { label: 'Interior Design & Furniture', code: '1016' },
+      { label: 'Transport & Logistics', code: '1043' },
+      { label: 'Mining & Geological', code: '1025' },
+    ],
+  },
+  {
+    name: 'ethiobiz',
+    label: 'Ethiobiz.com',
+    baseUrl: 'https://www.ethiobiz.com/category/',
+    categories: [
+      { label: 'Construction & Building', code: 'construction-building' },
+      { label: 'Engineering', code: 'engineering' },
+      { label: 'Real Estate', code: 'real-estate' },
+      { label: 'Manufacturing & Industry', code: 'manufacturing-industry' },
+      { label: 'Mining & Minerals', code: 'mining-minerals' },
+      { label: 'Electrical & Electronics', code: 'electrical-electronics' },
+      { label: 'Transport & Logistics', code: 'transport-logistics' },
+      { label: 'Consulting', code: 'consulting' },
+      { label: 'Energy & Power', code: 'energy-power' },
+      { label: 'Metal & Steel', code: 'metal-steel' },
+    ],
+  },
+  {
+    name: 'eccsa',
+    label: 'Ethiopian Chamber (ECCSA)',
+    baseUrl: 'https://www.ethiopianchamber.com/members/',
+    categories: [
+      { label: 'Construction Members', code: 'construction' },
+      { label: 'Manufacturing Members', code: 'manufacturing' },
+      { label: 'Engineering Members', code: 'engineering' },
+      { label: 'Import/Export Members', code: 'import-export' },
+      { label: 'Mining Members', code: 'mining' },
+      { label: 'Real Estate Members', code: 'real-estate' },
+    ],
+  },
 ];
 
 const PRIORITY_COLORS = {
