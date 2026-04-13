@@ -240,8 +240,8 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
           </TabsList>
 
           {/* AI Search Tab */}
-          <TabsContent value="search" className="flex-1 overflow-hidden flex flex-col space-y-3 mt-3">
-            <form onSubmit={handleSearch} className="space-y-2">
+          <TabsContent value="search" className="flex-1 min-h-0 overflow-hidden flex flex-col space-y-3 mt-3">
+            <form onSubmit={handleSearch} className="space-y-2 shrink-0">
               <p className="text-xs text-muted-foreground">
                 Search across Ethiopian directories, news, and business listings. AI automatically scores & categorizes results.
               </p>
