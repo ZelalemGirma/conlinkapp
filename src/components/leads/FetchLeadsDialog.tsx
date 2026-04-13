@@ -17,19 +17,56 @@ interface FetchLeadsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const MERKATO_CATEGORIES = [
-  { label: 'Building Material Suppliers', code: '1041' },
-  { label: 'Building & Construction', code: '1001' },
-  { label: 'Electrical & Electronics', code: '1006' },
-  { label: 'Metal & Steel', code: '1024' },
-  { label: 'Engineering Services', code: '1007' },
-  { label: 'Real Estate & Property', code: '1034' },
-  { label: 'Machinery & Equipment', code: '1021' },
-  { label: 'Solar & Renewable Energy', code: '1036' },
-  { label: 'Consulting Firms', code: '1005' },
-  { label: 'Interior Design & Furniture', code: '1016' },
-  { label: 'Transport & Logistics', code: '1043' },
-  { label: 'Mining & Geological', code: '1025' },
+const QUICK_FETCH_SOURCES = [
+  {
+    name: '2merkato',
+    label: '2merkato.com',
+    baseUrl: 'https://www.2merkato.com/directory/',
+    categories: [
+      { label: 'Building Material Suppliers', code: '1041' },
+      { label: 'Building & Construction', code: '1001' },
+      { label: 'Electrical & Electronics', code: '1006' },
+      { label: 'Metal & Steel', code: '1024' },
+      { label: 'Engineering Services', code: '1007' },
+      { label: 'Real Estate & Property', code: '1034' },
+      { label: 'Machinery & Equipment', code: '1021' },
+      { label: 'Solar & Renewable Energy', code: '1036' },
+      { label: 'Consulting Firms', code: '1005' },
+      { label: 'Interior Design & Furniture', code: '1016' },
+      { label: 'Transport & Logistics', code: '1043' },
+      { label: 'Mining & Geological', code: '1025' },
+    ],
+  },
+  {
+    name: 'ethiobiz',
+    label: 'Ethiobiz.com',
+    baseUrl: 'https://www.ethiobiz.com/category/',
+    categories: [
+      { label: 'Construction & Building', code: 'construction-building' },
+      { label: 'Engineering', code: 'engineering' },
+      { label: 'Real Estate', code: 'real-estate' },
+      { label: 'Manufacturing & Industry', code: 'manufacturing-industry' },
+      { label: 'Mining & Minerals', code: 'mining-minerals' },
+      { label: 'Electrical & Electronics', code: 'electrical-electronics' },
+      { label: 'Transport & Logistics', code: 'transport-logistics' },
+      { label: 'Consulting', code: 'consulting' },
+      { label: 'Energy & Power', code: 'energy-power' },
+      { label: 'Metal & Steel', code: 'metal-steel' },
+    ],
+  },
+  {
+    name: 'eccsa',
+    label: 'Ethiopian Chamber (ECCSA)',
+    baseUrl: 'https://www.ethiopianchamber.com/members/',
+    categories: [
+      { label: 'Construction Members', code: 'construction' },
+      { label: 'Manufacturing Members', code: 'manufacturing' },
+      { label: 'Engineering Members', code: 'engineering' },
+      { label: 'Import/Export Members', code: 'import-export' },
+      { label: 'Mining Members', code: 'mining' },
+      { label: 'Real Estate Members', code: 'real-estate' },
+    ],
+  },
 ];
 
 const PRIORITY_COLORS = {
@@ -41,7 +78,8 @@ const PRIORITY_COLORS = {
 const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange }) => {
   // URL fetch state
   const [url, setUrl] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  // selectedCategories is keyed by source name, e.g. { '2merkato': ['1041','1001'], 'ethiobiz': ['construction-building'] }
+  const [selectedCategories, setSelectedCategories] = useState<Record<string, string[]>>({});
   const [quickFetchOpen, setQuickFetchOpen] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const fetchMutation = useFetchLeadsFromUrl();
@@ -62,36 +100,52 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
     onOpenChange(false);
   };
 
-  const toggleCategory = (code: string) => {
-    setSelectedCategories(prev =>
-      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
-    );
+  const toggleCategory = (sourceName: string, code: string) => {
+    setSelectedCategories(prev => {
+      const current = prev[sourceName] || [];
+      const updated = current.includes(code)
+        ? current.filter(c => c !== code)
+        : [...current, code];
+      return { ...prev, [sourceName]: updated };
+    });
   };
 
-  const selectAll = () => {
-    if (selectedCategories.length === MERKATO_CATEGORIES.length) {
-      setSelectedCategories([]);
-    } else {
-      setSelectedCategories(MERKATO_CATEGORIES.map(c => c.code));
-    }
+  const selectAllForSource = (sourceName: string) => {
+    const source = QUICK_FETCH_SOURCES.find(s => s.name === sourceName);
+    if (!source) return;
+    setSelectedCategories(prev => {
+      const current = prev[sourceName] || [];
+      if (current.length === source.categories.length) {
+        return { ...prev, [sourceName]: [] };
+      }
+      return { ...prev, [sourceName]: source.categories.map(c => c.code) };
+    });
   };
+
+  const totalSelectedCount = Object.values(selectedCategories).reduce((sum, arr) => sum + arr.length, 0);
 
   const handleBulkFetch = async () => {
-    if (selectedCategories.length === 0) return;
-    setProgress({ current: 0, total: selectedCategories.length });
+    // Build list of all URLs to fetch
+    const urlsToFetch: string[] = [];
+    for (const source of QUICK_FETCH_SOURCES) {
+      const codes = selectedCategories[source.name] || [];
+      for (const code of codes) {
+        urlsToFetch.push(`${source.baseUrl}${code}/`);
+      }
+    }
+    if (urlsToFetch.length === 0) return;
+    setProgress({ current: 0, total: urlsToFetch.length });
 
-    for (let i = 0; i < selectedCategories.length; i++) {
-      const code = selectedCategories[i];
-      const categoryUrl = `https://www.2merkato.com/directory/${code}/`;
-      setProgress({ current: i + 1, total: selectedCategories.length });
+    for (let i = 0; i < urlsToFetch.length; i++) {
+      setProgress({ current: i + 1, total: urlsToFetch.length });
       try {
-        await fetchMutation.mutateAsync(categoryUrl);
+        await fetchMutation.mutateAsync(urlsToFetch[i]);
       } catch {
         // continue
       }
     }
 
-    setSelectedCategories([]);
+    setSelectedCategories({});
     setProgress({ current: 0, total: 0 });
     onOpenChange(false);
   };
@@ -309,50 +363,56 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
             <Collapsible open={quickFetchOpen} onOpenChange={setQuickFetchOpen}>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" className="w-full justify-between text-sm font-medium" disabled={isBulkFetching}>
-                  Quick Fetch: 2merkato Categories
+                  Quick Fetch: Ethiopian Directories
                   {quickFetchOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground">Select categories to scrape from 2merkato.com</p>
-                  <Button variant="link" size="sm" className="text-xs h-auto p-0" onClick={selectAll}>
-                    {selectedCategories.length === MERKATO_CATEGORIES.length ? 'Deselect All' : 'Select All'}
-                  </Button>
-                </div>
-                <ScrollArea className="h-48 rounded border p-2">
-                  <div className="space-y-2">
-                    {MERKATO_CATEGORIES.map(cat => (
-                      <label key={cat.code} className="flex items-center gap-2 cursor-pointer text-sm hover:bg-accent/50 rounded p-1">
-                        <Checkbox
-                          checked={selectedCategories.includes(cat.code)}
-                          onCheckedChange={() => toggleCategory(cat.code)}
-                        />
-                        <span>{cat.label}</span>
-                        <Badge variant="outline" className="ml-auto text-[10px]">{cat.code}</Badge>
-                      </label>
-                    ))}
-                  </div>
+                <ScrollArea className="max-h-[40vh] rounded border p-2">
+                  {QUICK_FETCH_SOURCES.map(source => {
+                    const selected = selectedCategories[source.name] || [];
+                    return (
+                      <div key={source.name} className="mb-3 last:mb-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold text-foreground">{source.label}</span>
+                          <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => selectAllForSource(source.name)}>
+                            {selected.length === source.categories.length ? 'Deselect' : 'Select All'}
+                          </Button>
+                        </div>
+                        <div className="space-y-1">
+                          {source.categories.map(cat => (
+                            <label key={cat.code} className="flex items-center gap-2 cursor-pointer text-sm hover:bg-accent/50 rounded p-1">
+                              <Checkbox
+                                checked={selected.includes(cat.code)}
+                                onCheckedChange={() => toggleCategory(source.name, cat.code)}
+                              />
+                              <span className="text-xs">{cat.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </ScrollArea>
 
                 {isBulkFetching && (
                   <div className="space-y-2">
                     <Progress value={(progress.current / progress.total) * 100} className="h-2" />
                     <div className="text-sm text-center text-muted-foreground">
-                      Scraping category {progress.current} of {progress.total}...
+                      Scraping {progress.current} of {progress.total}...
                     </div>
                   </div>
                 )}
 
                 <Button
                   className="w-full"
-                  disabled={selectedCategories.length === 0 || fetchMutation.isPending}
+                  disabled={totalSelectedCount === 0 || fetchMutation.isPending}
                   onClick={handleBulkFetch}
                 >
                   {isBulkFetching ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Scraping {progress.current}/{progress.total}...</>
                   ) : (
-                    `Fetch ${selectedCategories.length} Categor${selectedCategories.length === 1 ? 'y' : 'ies'}`
+                    `Fetch ${totalSelectedCount} Categor${totalSelectedCount === 1 ? 'y' : 'ies'}`
                   )}
                 </Button>
               </CollapsibleContent>
