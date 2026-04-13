@@ -10,17 +10,21 @@ const CATEGORIES = [
   "Interior Design & Architecture", "Financial Service",
 ];
 
-function extractDetailUrls(html: string, baseUrl: string): string[] {
-  const regex = /href="(https?:\/\/www\.2merkato\.com\/directory\/\d+[^"]*)"[^>]*>(?:show all digits|[^<]+)<\/a>/gi;
-  // Also grab main listing links
-  const listingRegex = /href="(https?:\/\/www\.2merkato\.com\/directory\/\d+-[^"]+)"/gi;
+function extractDetailUrls(html: string): string[] {
+  // Match all detail page links (directory/DIGITS-slug pattern)
+  const regex = /href="(https?:\/\/www\.2merkato\.com\/directory\/\d+-[^"]+)"/gi;
   const urls = new Set<string>();
   
   let match;
-  while ((match = listingRegex.exec(html)) !== null) {
-    urls.add(match[1]);
+  while ((match = regex.exec(html)) !== null) {
+    // Skip category pages (just numbers, no slug)
+    const u = match[1];
+    if (u.match(/\/directory\/\d+-/)) {
+      urls.add(u);
+    }
   }
-  return [...urls].slice(0, 20); // Limit to 20 detail pages
+  console.log(`Extracted ${urls.size} detail URLs from listing page`);
+  return [...urls].slice(0, 20);
 }
 
 async function fetchPage(url: string): Promise<string> {
