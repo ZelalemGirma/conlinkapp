@@ -296,11 +296,15 @@ IMPORTANT EXTRACTION RULES:
 2. Look for company names in directory listings, article mentions, search result snippets, etc.
 3. For each company, try to find: name, phone, email, address, what they do.
 
-PHONE NUMBER RULES:
-1. Lines with "EXTRACTED PHONE NUMBERS" are the MOST RELIABLE source — always use these first.
-2. Ethiopian numbers: +251 9XX XXX XXX or 09XX XXX XXX format. 10 digits with 0 prefix.
-3. If phone appears truncated or incomplete, still include it — partial info is better than none.
-4. The general 2merkato number (+251-93-010-5437) is NOT a company phone — ignore it.
+PHONE NUMBER RULES — CRITICAL, READ CAREFULLY:
+1. ONLY use phone numbers that appear VERBATIM in the source text. DO NOT invent, guess, or hallucinate phone numbers.
+2. Lines with "EXTRACTED PHONE NUMBERS" are the MOST RELIABLE source — always use these first.
+3. Ethiopian phone number formats: +251 9X XXX XXXX, 09X XXX XXXX, or +251 11 XXX XXXX.
+4. A valid Ethiopian mobile number has exactly 10 digits starting with 0 (e.g. 0911234567) or 13 characters with +251.
+5. A valid Ethiopian landline: 011 XXX XXXX (10 digits with 0).
+6. If a phone number has MORE than 10 digits (with 0 prefix) or MORE than 13 chars (with +251), it is INVALID — set phone to "".
+7. The general 2merkato number (+251-93-010-5437) is NOT a company phone — ignore it.
+8. If you are NOT 100% sure a phone number appears in the source text, set phone to "".
 
 EMAIL RULES:
 1. Lines with "EXTRACTED EMAILS" are the MOST RELIABLE source — always use these first.
