@@ -67,6 +67,23 @@ const QUICK_FETCH_SOURCES = [
       { label: 'Real Estate Members', code: 'real-estate' },
     ],
   },
+  {
+    name: 'ezega',
+    label: 'Ezega Business Guide',
+    baseUrl: 'https://businessguide.ezega.com/Category/Default.aspx?cid=',
+    categories: [
+      { label: 'Construction & Building', code: '37' },
+      { label: 'Engineering', code: '53' },
+      { label: 'Real Estate', code: '105' },
+      { label: 'Electrical & Electronics', code: '50' },
+      { label: 'Mining & Metals', code: '87' },
+      { label: 'Machinery & Equipment', code: '82' },
+      { label: 'Transport & Logistics', code: '126' },
+      { label: 'Manufacturing', code: '84' },
+      { label: 'Consulting Services', code: '40' },
+      { label: 'Solar & Energy', code: '52' },
+    ],
+  },
 ];
 
 const PRIORITY_COLORS = {
@@ -367,8 +384,8 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
                   {quickFetchOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </Button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-3 pt-2">
-                <ScrollArea className="h-[35vh] rounded border p-2">
+              <CollapsibleContent className="space-y-2 pt-2">
+                <ScrollArea className="h-48 rounded border p-2">
                   <div className="space-y-3 pr-3">
                     {QUICK_FETCH_SOURCES.map(source => {
                       const selected = selectedCategories[source.name] || [];
