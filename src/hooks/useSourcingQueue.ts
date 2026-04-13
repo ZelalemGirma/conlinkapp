@@ -19,19 +19,29 @@ export interface SourcingQueueItem {
   fetched_by: string;
   approved_by: string | null;
   assigned_rep_id: string | null;
+  relevance_score: number;
+  ai_reasoning: string;
+  priority: 'high' | 'medium' | 'low';
   created_at: string;
   updated_at: string;
 }
 
-export const useSourcingQueue = () => {
+export const useSourcingQueue = (priority?: 'high' | 'medium' | 'low') => {
   return useQuery({
-    queryKey: ['sourcing-queue'],
+    queryKey: ['sourcing-queue', priority],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('sourcing_queue' as any)
         .select('*')
         .eq('status', 'pending')
+        .order('relevance_score', { ascending: false })
         .order('created_at', { ascending: false });
+
+      if (priority) {
+        query = query.eq('priority', priority);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as unknown as SourcingQueueItem[];
     },
@@ -47,7 +57,6 @@ export const useFetchLeadsFromUrl = () => {
     mutationFn: async (url: string) => {
       if (!user) throw new Error('Not authenticated');
 
-      // Call edge function
       const { data: scrapeData, error: scrapeError } = await supabase.functions.invoke('scrape-leads', {
         body: { url },
       });
@@ -55,12 +64,10 @@ export const useFetchLeadsFromUrl = () => {
       if (scrapeError) throw scrapeError;
       if (!scrapeData?.success) throw new Error(scrapeData?.error || 'Scrape failed');
 
-      // Check for duplicates and insert into sourcing queue
       const leads = scrapeData.leads || [];
       const inserted: any[] = [];
 
       for (const lead of leads) {
-        // Check duplicates by phone
         let isDuplicate = false;
         let duplicateLeadId: string | null = null;
 
@@ -90,6 +97,9 @@ export const useFetchLeadsFromUrl = () => {
             is_duplicate: isDuplicate,
             duplicate_lead_id: duplicateLeadId,
             fetched_by: user.id,
+            relevance_score: lead.relevance_score || 0,
+            ai_reasoning: lead.ai_reasoning || '',
+            priority: lead.priority || 'medium',
           } as any)
           .select()
           .single();
@@ -118,7 +128,6 @@ export const useApproveQueueItem = () => {
     mutationFn: async ({ item, assignedRepId, category }: { item: SourcingQueueItem; assignedRepId: string; category: string }) => {
       if (!user) throw new Error('Not authenticated');
 
-      // Create real lead
       const { error: leadError } = await supabase.from('leads').insert({
         company_name: item.company_name,
         contact_person: item.contact_person,
@@ -133,7 +142,6 @@ export const useApproveQueueItem = () => {
 
       if (leadError) throw leadError;
 
-      // Mark as approved
       const { error: updateError } = await supabase
         .from('sourcing_queue' as any)
         .update({ status: 'approved', approved_by: user.id, assigned_rep_id: assignedRepId } as any)
@@ -167,6 +175,28 @@ export const useDeleteQueueItem = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sourcing-queue'] });
       toast({ title: 'Item purged from queue' });
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Failed to delete', description: err.message, variant: 'destructive' });
+    },
+  });
+};
+
+export const useBulkDeleteQueueItems = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('sourcing_queue' as any)
+        .delete()
+        .in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sourcing-queue'] });
+      toast({ title: 'Items purged from queue' });
     },
     onError: (err: Error) => {
       toast({ title: 'Failed to delete', description: err.message, variant: 'destructive' });

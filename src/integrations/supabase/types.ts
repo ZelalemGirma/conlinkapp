@@ -349,6 +349,7 @@ export type Database = {
       sourcing_queue: {
         Row: {
           address: string | null
+          ai_reasoning: string | null
           approved_by: string | null
           assigned_rep_id: string | null
           category: string | null
@@ -361,13 +362,16 @@ export type Database = {
           id: string
           is_duplicate: boolean
           phone: string | null
+          priority: string | null
           raw_text: string | null
+          relevance_score: number | null
           source_url: string
           status: string
           updated_at: string
         }
         Insert: {
           address?: string | null
+          ai_reasoning?: string | null
           approved_by?: string | null
           assigned_rep_id?: string | null
           category?: string | null
@@ -380,13 +384,16 @@ export type Database = {
           id?: string
           is_duplicate?: boolean
           phone?: string | null
+          priority?: string | null
           raw_text?: string | null
+          relevance_score?: number | null
           source_url: string
           status?: string
           updated_at?: string
         }
         Update: {
           address?: string | null
+          ai_reasoning?: string | null
           approved_by?: string | null
           assigned_rep_id?: string | null
           category?: string | null
@@ -399,7 +406,9 @@ export type Database = {
           id?: string
           is_duplicate?: boolean
           phone?: string | null
+          priority?: string | null
           raw_text?: string | null
+          relevance_score?: number | null
           source_url?: string
           status?: string
           updated_at?: string

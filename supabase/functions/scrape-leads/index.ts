@@ -1,69 +1,14 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  "Building Materials": ["cement", "concrete", "brick", "block", "sand", "gravel", "aggregate", "rebar", "steel bar", "building material", "construction material", "tile", "marble", "granite", "gypsum", "plaster", "paint", "roofing", "insulation", "waterproof"],
-  "Electrical & Power": ["electrical", "power", "generator", "transformer", "switchgear", "cable", "wire", "lighting", "solar panel", "inverter", "ups", "voltage", "circuit", "breaker", "meter", "energy"],
-  "Electro Mechanical": ["electromechanical", "electro-mechanical", "hvac", "elevator", "lift", "escalator", "plumbing", "fire fighting", "fire alarm", "bms", "building management"],
-  "Conveying Systems": ["conveyor", "conveying", "belt", "material handling", "logistics", "elevator", "escalator", "moving walkway"],
-  "Solar Technology": ["solar", "photovoltaic", "pv", "renewable energy", "green energy", "solar panel", "solar water"],
-  "Specialities": ["specialty", "speciality", "chemical", "adhesive", "sealant", "epoxy", "coating", "waterproofing"],
-  "Metal & Industrial Engineering": ["metal", "steel", "iron", "aluminum", "aluminium", "fabrication", "welding", "machining", "industrial", "engineering", "manufacturing"],
-  "Pre-Engineered System": ["pre-engineered", "prefab", "prefabricated", "modular", "steel structure", "metal building"],
-  "Road Construction Materials": ["road", "asphalt", "bitumen", "highway", "pavement", "traffic", "road construction"],
-  "Geological Systems": ["geological", "geotechnical", "soil", "foundation", "piling", "drilling", "borehole", "ground"],
-  "Construction Machinery": ["machinery", "excavator", "loader", "crane", "bulldozer", "forklift", "truck", "mixer", "compactor", "equipment", "heavy equipment", "caterpillar", "jcb"],
-  "Land and Building Development": ["real estate", "property", "developer", "development", "housing", "apartment", "condominium", "building development", "land"],
-  "Consultants": ["consultant", "consulting", "advisory", "engineering consultant", "project management", "supervision", "design consultant"],
-  "Construction Firms": ["contractor", "construction company", "construction firm", "general contractor", "civil works", "builder", "construction"],
-  "Interior Design & Architecture": ["interior", "architecture", "architect", "design", "furniture", "decoration", "fit-out", "fitout", "landscape"],
-  "Financial Service": ["finance", "financial", "bank", "insurance", "loan", "mortgage", "investment", "leasing"],
-};
-
-function detectCategory(text: string): string {
-  const lower = text.toLowerCase();
-  let bestCategory = "";
-  let bestScore = 0;
-
-  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    let score = 0;
-    for (const kw of keywords) {
-      const regex = new RegExp(`\\b${kw}\\b`, "gi");
-      const matches = lower.match(regex);
-      if (matches) score += matches.length;
-    }
-    if (score > bestScore) {
-      bestScore = score;
-      bestCategory = category;
-    }
-  }
-
-  return bestCategory;
-}
-
-function extractPhones(text: string): string[] {
-  const phoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{2,4}[-.\s]?\d{2,6}/g;
-  const matches = text.match(phoneRegex) || [];
-  return [...new Set(matches.map(p => p.replace(/\s+/g, " ").trim()).filter(p => p.replace(/\D/g, "").length >= 7))];
-}
-
-function extractEmails(text: string): string[] {
-  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-  return [...new Set(text.match(emailRegex) || [])];
-}
-
-function extractCompanyNames(text: string): string[] {
-  // Look for patterns like "Company Name PLC", "XYZ Trading", etc.
-  const patterns = [
-    /([A-Z][A-Za-z\s&]+(?:PLC|LLC|Ltd|Inc|Corp|Co\.|Trading|Engineering|Construction|Group|Enterprise|Enterprises|Company|Business))/g,
-  ];
-  const names: string[] = [];
-  for (const pat of patterns) {
-    const matches = text.match(pat) || [];
-    names.push(...matches.map(n => n.trim()));
-  }
-  return [...new Set(names)].slice(0, 20);
-}
+const CATEGORIES = [
+  "Building Materials", "Electrical & Power", "Electro Mechanical",
+  "Conveying Systems", "Solar Technology", "Specialities",
+  "Metal & Industrial Engineering", "Pre-Engineered System",
+  "Road Construction Materials", "Geological Systems",
+  "Construction Machinery", "Land and Building Development",
+  "Consultants", "Construction Firms",
+  "Interior Design & Architecture", "Financial Service",
+];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -89,7 +34,7 @@ Deno.serve(async (req) => {
     const response = await fetch(formattedUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; ConlinkBot/1.0)",
-        "Accept": "text/html,application/xhtml+xml",
+        Accept: "text/html,application/xhtml+xml",
       },
     });
 
@@ -102,7 +47,7 @@ Deno.serve(async (req) => {
 
     const html = await response.text();
 
-    // Strip HTML tags to get text
+    // Strip HTML to text
     const textContent = html
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
       .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
@@ -112,57 +57,144 @@ Deno.serve(async (req) => {
       .replace(/\s+/g, " ")
       .trim();
 
-    const phones = extractPhones(textContent);
-    const emails = extractEmails(textContent);
-    const companies = extractCompanyNames(html + " " + textContent);
-    const category = detectCategory(textContent);
+    const rawText = textContent.substring(0, 8000);
 
-    // Build lead entries - one per company found, or one generic if none found
-    const leads = [];
-    if (companies.length > 0) {
-      for (const company of companies.slice(0, 10)) {
-        leads.push({
-          company_name: company,
-          phone: phones[0] || "",
-          email: emails[0] || "",
-          address: "",
-          category,
-          contact_person: "",
-        });
-      }
-    } else if (phones.length > 0 || emails.length > 0) {
-      // Create entries per phone number
-      for (let i = 0; i < Math.max(phones.length, 1); i++) {
-        leads.push({
-          company_name: "",
-          phone: phones[i] || "",
-          email: emails[i] || emails[0] || "",
-          address: "",
-          category,
-          contact_person: "",
-        });
-      }
+    // Pass to AI for intelligent extraction
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      return new Response(JSON.stringify({ error: "AI key not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    if (leads.length === 0) {
-      leads.push({
+    const systemPrompt = `You are a data extraction AI for a construction industry CRM called Conlink. 
+Given raw website text, extract ALL potential business leads (companies) you can find.
+
+For each company found, extract:
+- company_name: The company's legal/trade name
+- primary_phone: Main phone/mobile number
+- secondary_phone: Alternative phone if available
+- email: Business email
+- address: Physical address
+- location_zone: District/area name if identifiable (e.g., Bole, Kirkos, Yeka for Addis Ababa)
+- category: Best match from these 16 categories: ${CATEGORIES.join(", ")}
+- relevance_score: 1-100 score of how well the company fits the CONSTRUCTION industry
+- reasoning: Brief explanation of categorization and relevance (e.g., "Matched to 'Building Materials' based on keyword 'Cement' found on site")
+- priority: "high" if relevance_score >= 60, "medium" if 30-59, "low" if < 30
+
+If the company is clearly NOT construction-related (bakery, retail shop, restaurant, etc.), set priority to "low" and relevance_score below 30.
+
+Return results as a JSON array under the key "leads".`;
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Extract business leads from this website text:\n\n${rawText}` },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "extract_leads",
+              description: "Extract structured lead data from website text",
+              parameters: {
+                type: "object",
+                properties: {
+                  leads: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        company_name: { type: "string" },
+                        primary_phone: { type: "string" },
+                        secondary_phone: { type: "string" },
+                        email: { type: "string" },
+                        address: { type: "string" },
+                        location_zone: { type: "string" },
+                        category: { type: "string", enum: CATEGORIES },
+                        relevance_score: { type: "number", minimum: 1, maximum: 100 },
+                        reasoning: { type: "string" },
+                        priority: { type: "string", enum: ["high", "medium", "low"] },
+                      },
+                      required: ["company_name", "relevance_score", "reasoning", "priority"],
+                    },
+                  },
+                },
+                required: ["leads"],
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "extract_leads" } },
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errText = await aiResponse.text();
+      console.error("AI gateway error:", aiResponse.status, errText);
+      return new Response(JSON.stringify({ error: "AI extraction failed" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const aiData = await aiResponse.json();
+    let leads: any[] = [];
+
+    try {
+      const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+      if (toolCall?.function?.arguments) {
+        const parsed = JSON.parse(toolCall.function.arguments);
+        leads = parsed.leads || [];
+      }
+    } catch (e) {
+      console.error("Failed to parse AI response:", e);
+    }
+
+    // Normalize leads
+    const normalizedLeads = leads.map((l: any) => ({
+      company_name: l.company_name || "",
+      contact_person: "",
+      phone: l.primary_phone || "",
+      secondary_phone: l.secondary_phone || "",
+      email: l.email || "",
+      address: l.address || "",
+      location_zone: l.location_zone || "",
+      category: CATEGORIES.includes(l.category) ? l.category : "",
+      relevance_score: Math.max(1, Math.min(100, l.relevance_score || 0)),
+      ai_reasoning: l.reasoning || "",
+      priority: ["high", "medium", "low"].includes(l.priority) ? l.priority : "medium",
+    }));
+
+    // Fallback if AI returned nothing
+    if (normalizedLeads.length === 0) {
+      normalizedLeads.push({
         company_name: "",
+        contact_person: "",
         phone: "",
+        secondary_phone: "",
         email: "",
         address: "",
-        category,
-        contact_person: "",
+        location_zone: "",
+        category: "",
+        relevance_score: 0,
+        ai_reasoning: "No leads could be extracted from this page.",
+        priority: "low",
       });
     }
 
     return new Response(JSON.stringify({
       success: true,
-      leads,
-      raw_text: textContent.substring(0, 5000),
-      detected_category: category,
-      all_phones: phones,
-      all_emails: emails,
-      all_companies: companies,
+      leads: normalizedLeads,
+      raw_text: rawText.substring(0, 5000),
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
