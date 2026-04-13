@@ -398,21 +398,35 @@ CRITICAL: You MUST return at least the companies you find even if phone/email is
 
     console.log(`AI extracted ${leads.length} raw leads before filtering`);
 
+    // Validate Ethiopian phone number format
+    function isValidEthiopianPhone(phone: string): boolean {
+      if (!phone || phone.trim() === "") return false;
+      const cleaned = phone.replace(/[\s.\-()]/g, "");
+      // +251 followed by 9 digits = 13 chars, or 0 followed by 9 digits = 10 chars
+      if (cleaned.startsWith("+251") && cleaned.length === 13) return true;
+      if (cleaned.startsWith("0") && cleaned.length === 10) return true;
+      // Landline: +251 11 XXX XXXX = 13 chars or 011 XXX XXXX = 10 chars
+      return false;
+    }
+
     const normalizedLeads = leads
-      .map((l: any) => ({
-        company_name: l.company_name || "",
-        contact_person: l.contact_person || "",
-        phone: l.primary_phone || "",
-        secondary_phone: l.secondary_phone || "",
-        email: l.email || "",
-        address: l.address || "",
-        location_zone: l.location_zone || "",
-        category: CATEGORIES.includes(l.category) ? l.category : "",
-        relevance_score: Math.max(1, Math.min(100, l.relevance_score || 0)),
-        ai_reasoning: l.reasoning || "",
-        priority: ["high", "medium", "low"].includes(l.priority) ? l.priority : "medium",
-        source_url: l.source_url || "",
-      }))
+      .map((l: any) => {
+        const phone = l.primary_phone || "";
+        return {
+          company_name: l.company_name || "",
+          contact_person: l.contact_person || "",
+          phone: isValidEthiopianPhone(phone) ? phone : "",
+          secondary_phone: isValidEthiopianPhone(l.secondary_phone || "") ? (l.secondary_phone || "") : "",
+          email: l.email || "",
+          address: l.address || "",
+          location_zone: l.location_zone || "",
+          category: CATEGORIES.includes(l.category) ? l.category : "",
+          relevance_score: Math.max(1, Math.min(100, l.relevance_score || 0)),
+          ai_reasoning: l.reasoning || "",
+          priority: ["high", "medium", "low"].includes(l.priority) ? l.priority : "medium",
+          source_url: l.source_url || "",
+        };
+      })
       .filter((l: any) => l.company_name.trim() !== "")
       // Only keep leads that have at least a phone or email
       .filter((l: any) => l.phone.trim() !== "" || l.email.trim() !== "");
