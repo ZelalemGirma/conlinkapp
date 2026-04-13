@@ -299,7 +299,14 @@ const VettingQueue: React.FC = () => {
               </TabsList>
             </div>
             <TabsContent value="high" className="mt-0">
-              <QueueTable items={highQueue || []} onEdit={handleEdit} onApprove={handleApproveClick} onDelete={(id) => deleteMutation.mutate(id)} />
+              <QueueTable
+                items={highQueue || []}
+                onEdit={handleEdit}
+                onApprove={handleApproveClick}
+                onDelete={(id) => deleteMutation.mutate(id)}
+                showBulkDelete
+                onBulkDelete={(ids) => bulkDeleteMutation.mutate(ids)}
+              />
             </TabsContent>
             <TabsContent value="medium" className="mt-0">
               <QueueTable items={mediumQueue || []} onEdit={handleEdit} onApprove={handleApproveClick} onDelete={(id) => deleteMutation.mutate(id)} />
