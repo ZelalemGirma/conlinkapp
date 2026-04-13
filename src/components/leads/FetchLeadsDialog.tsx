@@ -78,6 +78,7 @@ const PRIORITY_COLORS = {
 const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange }) => {
   // URL fetch state
   const [url, setUrl] = useState('');
+  // selectedCategories is keyed by source name, e.g. { '2merkato': ['1041','1001'], 'ethiobiz': ['construction-building'] }
   const [selectedCategories, setSelectedCategories] = useState<Record<string, string[]>>({});
   const [quickFetchOpen, setQuickFetchOpen] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
@@ -99,36 +100,52 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
     onOpenChange(false);
   };
 
-  const toggleCategory = (code: string) => {
-    setSelectedCategories(prev =>
-      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
-    );
+  const toggleCategory = (sourceName: string, code: string) => {
+    setSelectedCategories(prev => {
+      const current = prev[sourceName] || [];
+      const updated = current.includes(code)
+        ? current.filter(c => c !== code)
+        : [...current, code];
+      return { ...prev, [sourceName]: updated };
+    });
   };
 
-  const selectAll = () => {
-    if (selectedCategories.length === MERKATO_CATEGORIES.length) {
-      setSelectedCategories([]);
-    } else {
-      setSelectedCategories(MERKATO_CATEGORIES.map(c => c.code));
-    }
+  const selectAllForSource = (sourceName: string) => {
+    const source = QUICK_FETCH_SOURCES.find(s => s.name === sourceName);
+    if (!source) return;
+    setSelectedCategories(prev => {
+      const current = prev[sourceName] || [];
+      if (current.length === source.categories.length) {
+        return { ...prev, [sourceName]: [] };
+      }
+      return { ...prev, [sourceName]: source.categories.map(c => c.code) };
+    });
   };
+
+  const totalSelectedCount = Object.values(selectedCategories).reduce((sum, arr) => sum + arr.length, 0);
 
   const handleBulkFetch = async () => {
-    if (selectedCategories.length === 0) return;
-    setProgress({ current: 0, total: selectedCategories.length });
+    // Build list of all URLs to fetch
+    const urlsToFetch: string[] = [];
+    for (const source of QUICK_FETCH_SOURCES) {
+      const codes = selectedCategories[source.name] || [];
+      for (const code of codes) {
+        urlsToFetch.push(`${source.baseUrl}${code}/`);
+      }
+    }
+    if (urlsToFetch.length === 0) return;
+    setProgress({ current: 0, total: urlsToFetch.length });
 
-    for (let i = 0; i < selectedCategories.length; i++) {
-      const code = selectedCategories[i];
-      const categoryUrl = `https://www.2merkato.com/directory/${code}/`;
-      setProgress({ current: i + 1, total: selectedCategories.length });
+    for (let i = 0; i < urlsToFetch.length; i++) {
+      setProgress({ current: i + 1, total: urlsToFetch.length });
       try {
-        await fetchMutation.mutateAsync(categoryUrl);
+        await fetchMutation.mutateAsync(urlsToFetch[i]);
       } catch {
         // continue
       }
     }
 
-    setSelectedCategories([]);
+    setSelectedCategories({});
     setProgress({ current: 0, total: 0 });
     onOpenChange(false);
   };
