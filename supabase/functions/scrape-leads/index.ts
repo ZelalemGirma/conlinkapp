@@ -11,28 +11,72 @@ const CATEGORIES = [
 ];
 
 function extractDetailUrls(html: string, baseOrigin: string): string[] {
-  // Match both absolute and relative detail page links (directory/DIGITS-slug)
   const regex = /href="((?:https?:\/\/[^"]*)?\/directory\/\d+-[^"]+)"/gi;
   const urls = new Set<string>();
-  
   let match;
   while ((match = regex.exec(html)) !== null) {
     let u = match[1];
-    if (u.startsWith("/")) {
-      u = baseOrigin + u;
-    }
+    if (u.startsWith("/")) u = baseOrigin + u;
     urls.add(u);
   }
-  console.log(`Extracted ${urls.size} detail URLs from listing page`);
-  return [...urls].slice(0, 20);
+  return [...urls];
+}
+
+function extractPaginationUrls(html: string, baseUrl: string): string[] {
+  // Match pagination links like ?page=2, ?page=3 etc.
+  const regex = /href="([^"]*[?&]page=(\d+)[^"]*)"/gi;
+  const pages = new Map<number, string>();
+  let match;
+  while ((match = regex.exec(html)) !== null) {
+    const pageNum = parseInt(match[2]);
+    let u = match[1];
+    if (u.startsWith("/")) {
+      const urlObj = new URL(baseUrl);
+      u = urlObj.origin + u;
+    } else if (!u.startsWith("http")) {
+      u = baseUrl.replace(/\?.*$/, "") + "?" + u.replace(/^.*\?/, "");
+    }
+    if (pageNum > 1) pages.set(pageNum, u);
+  }
+  // Sort by page number and return
+  return [...pages.entries()].sort((a, b) => a[0] - b[0]).map(e => e[1]);
+}
+
+function extractPhoneNumbers(html: string): string[] {
+  // Extract phone numbers from HTML including hidden/data attributes
+  // Look for patterns in data attributes, hidden spans, tel: links
+  const phones: string[] = [];
+  
+  // Match tel: links
+  const telRegex = /href="tel:([^"]+)"/gi;
+  let m;
+  while ((m = telRegex.exec(html)) !== null) {
+    phones.push(m[1].trim());
+  }
+  
+  // Match data-phone or data-mobile attributes
+  const dataRegex = /data-(?:phone|mobile|tel)[=:]"?([^">\s]+)/gi;
+  while ((m = dataRegex.exec(html)) !== null) {
+    phones.push(m[1].trim());
+  }
+  
+  // Match Ethiopian phone patterns in visible text: +251, 0911, etc.
+  const ethRegex = /(?:\+251|0)[\s.-]?(?:9|1[1-9])\d[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}/g;
+  const stripped = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
+  while ((m = ethRegex.exec(stripped)) !== null) {
+    phones.push(m[0].trim());
+  }
+  
+  return [...new Set(phones)];
 }
 
 async function fetchPage(url: string): Promise<string> {
   try {
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; ConlinkBot/1.0)",
-        Accept: "text/html,application/xhtml+xml",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
       },
     });
     if (!response.ok) return "";
@@ -59,7 +103,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { url } = await req.json();
+    const { url, maxPages = 3 } = await req.json();
     if (!url || typeof url !== "string") {
       return new Response(JSON.stringify({ error: "URL is required" }), {
         status: 400,
@@ -72,8 +116,9 @@ Deno.serve(async (req) => {
       formattedUrl = `https://${formattedUrl}`;
     }
 
-    console.log("Fetching URL:", formattedUrl);
+    console.log("Fetching URL:", formattedUrl, "maxPages:", maxPages);
 
+    // Step 1: Fetch main listing page
     const mainHtml = await fetchPage(formattedUrl);
     if (!mainHtml) {
       return new Response(JSON.stringify({ error: "Failed to fetch URL" }), {
@@ -82,38 +127,61 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Extract base origin for relative URL resolution
     const urlObj = new URL(formattedUrl);
     const baseOrigin = urlObj.origin;
-    
-    // Check if this is a directory/listing page with detail links
-    const detailUrls = extractDetailUrls(mainHtml, baseOrigin);
-    
+
+    // Step 2: Collect detail URLs from page 1
+    let allDetailUrls = extractDetailUrls(mainHtml, baseOrigin);
+    console.log(`Page 1: found ${allDetailUrls.length} detail URLs`);
+
+    // Step 3: Discover and fetch additional listing pages
+    const paginationUrls = extractPaginationUrls(mainHtml, formattedUrl);
+    const pagesToFetch = paginationUrls.slice(0, Math.max(0, maxPages - 1));
+    console.log(`Found ${paginationUrls.length} pagination links, fetching ${pagesToFetch.length} more pages`);
+
+    for (const pageUrl of pagesToFetch) {
+      console.log(`Fetching listing page: ${pageUrl}`);
+      const pageHtml = await fetchPage(pageUrl);
+      if (pageHtml) {
+        const pageDetailUrls = extractDetailUrls(pageHtml, baseOrigin);
+        console.log(`Found ${pageDetailUrls.length} detail URLs on this page`);
+        allDetailUrls = [...allDetailUrls, ...pageDetailUrls];
+      }
+    }
+
+    // Deduplicate detail URLs
+    allDetailUrls = [...new Set(allDetailUrls)];
+    console.log(`Total unique detail URLs: ${allDetailUrls.length}`);
+
+    // Step 4: Fetch each detail page (batches of 5) and extract phones from raw HTML
     let combinedText = "";
-    
-    if (detailUrls.length > 0) {
-      console.log(`Found ${detailUrls.length} detail pages, fetching each...`);
-      
-      // Fetch detail pages in parallel (batches of 5)
-      const detailTexts: string[] = [];
-      for (let i = 0; i < detailUrls.length; i += 5) {
-        const batch = detailUrls.slice(i, i + 5);
+    const detailTexts: string[] = [];
+
+    if (allDetailUrls.length > 0) {
+      for (let i = 0; i < allDetailUrls.length; i += 5) {
+        const batch = allDetailUrls.slice(i, i + 5);
         const results = await Promise.all(batch.map(async (dUrl) => {
           const html = await fetchPage(dUrl);
-          return html ? `--- DETAIL PAGE: ${dUrl} ---\n${stripHtml(html)}` : "";
+          if (!html) return "";
+          
+          // Extract phone numbers directly from HTML before stripping
+          const phones = extractPhoneNumbers(html);
+          const phoneInfo = phones.length > 0 
+            ? `\nEXTRACTED PHONE NUMBERS: ${phones.join(", ")}` 
+            : "";
+          
+          return `--- DETAIL PAGE: ${dUrl} ---${phoneInfo}\n${stripHtml(html)}`;
         }));
         detailTexts.push(...results.filter(Boolean));
       }
-      
-      // Combine listing page + all detail pages
       combinedText = stripHtml(mainHtml) + "\n\n" + detailTexts.join("\n\n");
     } else {
       combinedText = stripHtml(mainHtml);
     }
 
-    const rawText = combinedText.substring(0, 15000);
+    const rawText = combinedText.substring(0, 30000);
 
-    // Pass to AI for intelligent extraction
+    // Step 5: AI extraction
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       return new Response(JSON.stringify({ error: "AI key not configured" }), {
@@ -123,19 +191,23 @@ Deno.serve(async (req) => {
     }
 
     const systemPrompt = `You are a data extraction AI for a construction industry CRM called Conlink. 
-Given raw website text (which may include multiple detail pages), extract ALL potential business leads (companies) you can find.
+Given raw website text (which may include multiple detail pages from MULTIPLE LISTING PAGES), extract ALL potential business leads (companies) you can find.
 
-IMPORTANT: The text may contain data from a LISTING page AND individual DETAIL pages. The detail pages have COMPLETE phone numbers and full addresses. Always prefer the COMPLETE data from detail pages over truncated data from listing pages.
+IMPORTANT RULES FOR PHONE NUMBERS:
+1. The text includes "EXTRACTED PHONE NUMBERS:" lines for each detail page - these are the MOST RELIABLE source for phone numbers. ALWAYS use these over any truncated numbers in the text.
+2. Ethiopian numbers must have 9-10 digits after +251 (e.g., +251 911 234 567). If only a truncated number is available (ending in "..." or "000" or incomplete), set to empty "".
+3. NEVER guess or fabricate missing digits. If you cannot find the complete phone number, leave it empty.
+4. If a number appears as "0911 23 45 67", convert to "+251 911 234 567" format.
 
 For each company found, extract:
 - company_name: The company's legal/trade name
-- primary_phone: Main phone/mobile number. Ethiopian numbers must be complete with 9-10 digits after +251 (e.g., +251 911 234 567). If only a truncated number is available, set to empty "".
+- primary_phone: Main phone/mobile number (MUST be complete, no guessing)
 - secondary_phone: Alternative phone if available (same rules)
 - email: Business email
 - address: Full physical address from the detail page
 - location_zone: District/area name (e.g., Bole, Kirkos, Yeka, Nifas Silk for Addis Ababa)
 - category: Best match from these 16 categories: ${CATEGORIES.join(", ")}
-- relevance_score: 1-100 score of how well the company fits the CONSTRUCTION industry
+- relevance_score: 1-100 score of how well the company fits the construction industry
 - reasoning: Brief explanation (e.g., "Matched to 'Construction Firms' — Grade 1 Building Contractor")
 - priority: "high" if relevance_score >= 60, "medium" if 30-59, "low" if < 30
 
@@ -245,13 +317,14 @@ Return results as a JSON array under the key "leads".`;
       });
     }
 
-    console.log(`Extracted ${normalizedLeads.length} leads`);
+    console.log(`Extracted ${normalizedLeads.length} leads from ${allDetailUrls.length} detail pages across ${1 + pagesToFetch.length} listing pages`);
 
     return new Response(JSON.stringify({
       success: true,
       leads: normalizedLeads,
       raw_text: rawText.substring(0, 5000),
-      detail_pages_fetched: detailUrls.length,
+      detail_pages_fetched: allDetailUrls.length,
+      listing_pages_fetched: 1 + pagesToFetch.length,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
