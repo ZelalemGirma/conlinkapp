@@ -384,8 +384,8 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
                   {quickFetchOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </Button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-3 pt-2">
-                <ScrollArea className="h-[35vh] rounded border p-2">
+              <CollapsibleContent className="space-y-2 pt-2">
+                <ScrollArea className="h-48 rounded border p-2">
                   <div className="space-y-3 pr-3">
                     {QUICK_FETCH_SOURCES.map(source => {
                       const selected = selectedCategories[source.name] || [];
