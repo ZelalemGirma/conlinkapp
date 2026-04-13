@@ -328,6 +328,7 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
 
                 {/* Import button */}
                 <Button
+                  className="w-full shrink-0"
                   onClick={handleImport}
                   disabled={selectedResults.size === 0 || importMutation.isPending}
                   className="w-full"
