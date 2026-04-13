@@ -82,12 +82,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Log a sample of links found in the HTML for debugging
-    const allHrefs = [...mainHtml.matchAll(/href="([^"]+)"/gi)].map(m => m[1]).filter(h => h.includes('directory'));
-    console.log(`Found ${allHrefs.length} directory hrefs. Samples:`, allHrefs.slice(0, 3));
+    // Extract base origin for relative URL resolution
+    const urlObj = new URL(formattedUrl);
+    const baseOrigin = urlObj.origin;
     
     // Check if this is a directory/listing page with detail links
-    const detailUrls = extractDetailUrls(mainHtml);
+    const detailUrls = extractDetailUrls(mainHtml, baseOrigin);
     
     let combinedText = "";
     
