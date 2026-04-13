@@ -346,6 +346,74 @@ export type Database = {
         }
         Relationships: []
       }
+      sourcing_queue: {
+        Row: {
+          address: string | null
+          approved_by: string | null
+          assigned_rep_id: string | null
+          category: string | null
+          company_name: string
+          contact_person: string
+          created_at: string
+          duplicate_lead_id: string | null
+          email: string | null
+          fetched_by: string
+          id: string
+          is_duplicate: boolean
+          phone: string | null
+          raw_text: string | null
+          source_url: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          approved_by?: string | null
+          assigned_rep_id?: string | null
+          category?: string | null
+          company_name?: string
+          contact_person?: string
+          created_at?: string
+          duplicate_lead_id?: string | null
+          email?: string | null
+          fetched_by: string
+          id?: string
+          is_duplicate?: boolean
+          phone?: string | null
+          raw_text?: string | null
+          source_url: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          approved_by?: string | null
+          assigned_rep_id?: string | null
+          category?: string | null
+          company_name?: string
+          contact_person?: string
+          created_at?: string
+          duplicate_lead_id?: string | null
+          email?: string | null
+          fetched_by?: string
+          id?: string
+          is_duplicate?: boolean
+          phone?: string | null
+          raw_text?: string | null
+          source_url?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sourcing_queue_duplicate_lead_id_fkey"
+            columns: ["duplicate_lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
