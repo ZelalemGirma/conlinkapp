@@ -352,7 +352,8 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
           </TabsContent>
 
           {/* URL Fetch Tab */}
-          <TabsContent value="url" className="space-y-3 mt-3">
+          <TabsContent value="url" className="mt-3 flex-1 overflow-auto">
+            <div className="space-y-3">
             <form onSubmit={handleSubmit} className="space-y-3">
               <p className="text-sm text-muted-foreground">
                 Enter a URL to scrape, or use Quick Fetch below for 2merkato categories.
