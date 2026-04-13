@@ -47,6 +47,31 @@ function extractPhoneNumbers(html: string): string[] {
   return [...new Set(phones)];
 }
 
+function extractEmails(html: string): string[] {
+  const emails: string[] = [];
+  let m;
+
+  // mailto: links
+  const mailtoRegex = /href="mailto:([^"?]+)"/gi;
+  while ((m = mailtoRegex.exec(html)) !== null) emails.push(m[1].trim().toLowerCase());
+
+  // data-email attributes
+  const dataRegex = /data-email[=:]"?([^">\s]+)/gi;
+  while ((m = dataRegex.exec(html)) !== null) emails.push(m[1].trim().toLowerCase());
+
+  // Email pattern in visible text
+  const stripped = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
+  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+  while ((m = emailRegex.exec(stripped)) !== null) {
+    const e = m[0].toLowerCase();
+    if (!e.endsWith(".png") && !e.endsWith(".jpg") && !e.endsWith(".gif") && !e.includes("example.com")) {
+      emails.push(e);
+    }
+  }
+
+  return [...new Set(emails)];
+}
+
 function extractUrls(html: string, baseOrigin: string): string[] {
   const regex = /href="(https?:\/\/[^"]+)"/gi;
   const urls = new Set<string>();
@@ -145,9 +170,12 @@ Deno.serve(async (req) => {
           const html = await fetchPage(dUrl);
           if (!html) return "";
           const phones = extractPhoneNumbers(html);
+          const emails = extractEmails(html);
           const phoneInfo =
             phones.length > 0 ? `\nEXTRACTED PHONE NUMBERS: ${phones.join(", ")}` : "";
-          return `--- DETAIL PAGE: ${dUrl} ---${phoneInfo}\n${stripHtml(html)}`;
+          const emailInfo =
+            emails.length > 0 ? `\nEXTRACTED EMAILS: ${emails.join(", ")}` : "";
+          return `--- DETAIL PAGE: ${dUrl} ---${phoneInfo}${emailInfo}\n${stripHtml(html)}`;
         })
       );
       detailTexts.push(...results.filter(Boolean));
@@ -201,6 +229,11 @@ PHONE NUMBER RULES:
 1. Lines with "EXTRACTED PHONE NUMBERS:" are most reliable — always prefer these.
 2. Ethiopian numbers: 10 digits with 0 prefix or +251 format. Never guess missing digits.
 3. If phone is incomplete, leave empty.
+
+EMAIL RULES:
+1. Lines with "EXTRACTED EMAILS:" are most reliable — always prefer these.
+2. Use real business emails only. Ignore generic ones like info@example.com or noreply@.
+3. If no email found, leave empty.
 
 PRIORITY:
 - "high": relevance_score >= 60 AND matches a category well
