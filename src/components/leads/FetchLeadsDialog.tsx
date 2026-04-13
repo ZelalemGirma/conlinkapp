@@ -368,31 +368,33 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-3 pt-2">
-                <ScrollArea className="max-h-[40vh] rounded border p-2">
-                  {QUICK_FETCH_SOURCES.map(source => {
-                    const selected = selectedCategories[source.name] || [];
-                    return (
-                      <div key={source.name} className="mb-3 last:mb-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-semibold text-foreground">{source.label}</span>
-                          <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => selectAllForSource(source.name)}>
-                            {selected.length === source.categories.length ? 'Deselect' : 'Select All'}
-                          </Button>
+                <ScrollArea className="h-[35vh] rounded border p-2">
+                  <div className="space-y-3 pr-3">
+                    {QUICK_FETCH_SOURCES.map(source => {
+                      const selected = selectedCategories[source.name] || [];
+                      return (
+                        <div key={source.name} className="mb-3 last:mb-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-semibold text-foreground">{source.label}</span>
+                            <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => selectAllForSource(source.name)}>
+                              {selected.length === source.categories.length ? 'Deselect' : 'Select All'}
+                            </Button>
+                          </div>
+                          <div className="space-y-1">
+                            {source.categories.map(cat => (
+                              <label key={cat.code} className="flex items-center gap-2 cursor-pointer text-sm hover:bg-accent/50 rounded p-1">
+                                <Checkbox
+                                  checked={selected.includes(cat.code)}
+                                  onCheckedChange={() => toggleCategory(source.name, cat.code)}
+                                />
+                                <span className="text-xs">{cat.label}</span>
+                              </label>
+                            ))}
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          {source.categories.map(cat => (
-                            <label key={cat.code} className="flex items-center gap-2 cursor-pointer text-sm hover:bg-accent/50 rounded p-1">
-                              <Checkbox
-                                checked={selected.includes(cat.code)}
-                                onCheckedChange={() => toggleCategory(source.name, cat.code)}
-                              />
-                              <span className="text-xs">{cat.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </ScrollArea>
 
                 {isBulkFetching && (
