@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     }
 
     // Check if this is a directory/listing page with detail links
-    const detailUrls = extractDetailUrls(mainHtml, formattedUrl);
+    const detailUrls = extractDetailUrls(mainHtml);
     
     let combinedText = "";
     
