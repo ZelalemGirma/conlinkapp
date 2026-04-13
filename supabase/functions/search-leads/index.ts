@@ -330,20 +330,23 @@ Return ALL companies found, even low-relevance ones — let the user decide what
       console.error("Failed to parse AI response:", e);
     }
 
-    const normalizedLeads = leads.map((l: any) => ({
-      company_name: l.company_name || "",
-      contact_person: l.contact_person || "",
-      phone: l.primary_phone || "",
-      secondary_phone: l.secondary_phone || "",
-      email: l.email || "",
-      address: l.address || "",
-      location_zone: l.location_zone || "",
-      category: CATEGORIES.includes(l.category) ? l.category : "",
-      relevance_score: Math.max(1, Math.min(100, l.relevance_score || 0)),
-      ai_reasoning: l.reasoning || "",
-      priority: ["high", "medium", "low"].includes(l.priority) ? l.priority : "medium",
-      source_url: l.source_url || "",
-    }));
+    const normalizedLeads = leads
+      .map((l: any) => ({
+        company_name: l.company_name || "",
+        contact_person: l.contact_person || "",
+        phone: l.primary_phone || "",
+        secondary_phone: l.secondary_phone || "",
+        email: l.email || "",
+        address: l.address || "",
+        location_zone: l.location_zone || "",
+        category: CATEGORIES.includes(l.category) ? l.category : "",
+        relevance_score: Math.max(1, Math.min(100, l.relevance_score || 0)),
+        ai_reasoning: l.reasoning || "",
+        priority: ["high", "medium", "low"].includes(l.priority) ? l.priority : "medium",
+        source_url: l.source_url || "",
+      }))
+      // Only keep leads that have at least a phone or email
+      .filter((l: any) => l.phone.trim() !== "" || l.email.trim() !== "");
 
     console.log(`Search "${searchQuery}" → ${normalizedLeads.length} leads from ${activeSources.length} sources, ${allDetailUrls.length} detail pages`);
 
