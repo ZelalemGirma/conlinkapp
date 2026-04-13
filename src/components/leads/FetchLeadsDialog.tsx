@@ -240,8 +240,8 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
           </TabsList>
 
           {/* AI Search Tab */}
-          <TabsContent value="search" className="flex-1 overflow-hidden flex flex-col space-y-3 mt-3">
-            <form onSubmit={handleSearch} className="space-y-2">
+          <TabsContent value="search" className="flex-1 min-h-0 overflow-hidden flex flex-col space-y-3 mt-3">
+            <form onSubmit={handleSearch} className="space-y-2 shrink-0">
               <p className="text-xs text-muted-foreground">
                 Search across Ethiopian directories, news, and business listings. AI automatically scores & categorizes results.
               </p>
@@ -276,9 +276,9 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
             )}
 
             {searchResults.length > 0 && (
-              <div className="flex-1 overflow-hidden flex flex-col space-y-2">
+              <div className="flex-1 min-h-0 overflow-hidden flex flex-col space-y-2">
                 {/* Summary bar */}
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center justify-between text-xs text-muted-foreground shrink-0">
                   <span>
                     Found <strong>{searchResults.length}</strong> companies from{' '}
                     {searchMeta?.sources.join(', ')} ({searchMeta?.detailPages} pages crawled)
@@ -289,7 +289,7 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
                 </div>
 
                 {/* Results list */}
-                <ScrollArea className="max-h-[40vh] rounded border">
+                <ScrollArea className="flex-1 min-h-0 rounded border">
                   <div className="divide-y">
                     {searchResults.map((lead, idx) => (
                       <label
@@ -328,9 +328,9 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
 
                 {/* Import button */}
                 <Button
+                  className="w-full shrink-0"
                   onClick={handleImport}
                   disabled={selectedResults.size === 0 || importMutation.isPending}
-                  className="w-full"
                 >
                   {importMutation.isPending ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Importing...</>
