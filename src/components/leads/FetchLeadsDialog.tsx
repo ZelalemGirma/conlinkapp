@@ -78,7 +78,7 @@ const PRIORITY_COLORS = {
 const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange }) => {
   // URL fetch state
   const [url, setUrl] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<Record<string, string[]>>({});
   const [quickFetchOpen, setQuickFetchOpen] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const fetchMutation = useFetchLeadsFromUrl();
