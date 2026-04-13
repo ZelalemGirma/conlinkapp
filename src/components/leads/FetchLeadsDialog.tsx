@@ -363,50 +363,56 @@ const FetchLeadsDialog: React.FC<FetchLeadsDialogProps> = ({ open, onOpenChange 
             <Collapsible open={quickFetchOpen} onOpenChange={setQuickFetchOpen}>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" className="w-full justify-between text-sm font-medium" disabled={isBulkFetching}>
-                  Quick Fetch: 2merkato Categories
+                  Quick Fetch: Ethiopian Directories
                   {quickFetchOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground">Select categories to scrape from 2merkato.com</p>
-                  <Button variant="link" size="sm" className="text-xs h-auto p-0" onClick={selectAll}>
-                    {selectedCategories.length === MERKATO_CATEGORIES.length ? 'Deselect All' : 'Select All'}
-                  </Button>
-                </div>
-                <ScrollArea className="h-48 rounded border p-2">
-                  <div className="space-y-2">
-                    {MERKATO_CATEGORIES.map(cat => (
-                      <label key={cat.code} className="flex items-center gap-2 cursor-pointer text-sm hover:bg-accent/50 rounded p-1">
-                        <Checkbox
-                          checked={selectedCategories.includes(cat.code)}
-                          onCheckedChange={() => toggleCategory(cat.code)}
-                        />
-                        <span>{cat.label}</span>
-                        <Badge variant="outline" className="ml-auto text-[10px]">{cat.code}</Badge>
-                      </label>
-                    ))}
-                  </div>
+                <ScrollArea className="max-h-[40vh] rounded border p-2">
+                  {QUICK_FETCH_SOURCES.map(source => {
+                    const selected = selectedCategories[source.name] || [];
+                    return (
+                      <div key={source.name} className="mb-3 last:mb-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold text-foreground">{source.label}</span>
+                          <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => selectAllForSource(source.name)}>
+                            {selected.length === source.categories.length ? 'Deselect' : 'Select All'}
+                          </Button>
+                        </div>
+                        <div className="space-y-1">
+                          {source.categories.map(cat => (
+                            <label key={cat.code} className="flex items-center gap-2 cursor-pointer text-sm hover:bg-accent/50 rounded p-1">
+                              <Checkbox
+                                checked={selected.includes(cat.code)}
+                                onCheckedChange={() => toggleCategory(source.name, cat.code)}
+                              />
+                              <span className="text-xs">{cat.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </ScrollArea>
 
                 {isBulkFetching && (
                   <div className="space-y-2">
                     <Progress value={(progress.current / progress.total) * 100} className="h-2" />
                     <div className="text-sm text-center text-muted-foreground">
-                      Scraping category {progress.current} of {progress.total}...
+                      Scraping {progress.current} of {progress.total}...
                     </div>
                   </div>
                 )}
 
                 <Button
                   className="w-full"
-                  disabled={selectedCategories.length === 0 || fetchMutation.isPending}
+                  disabled={totalSelectedCount === 0 || fetchMutation.isPending}
                   onClick={handleBulkFetch}
                 >
                   {isBulkFetching ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Scraping {progress.current}/{progress.total}...</>
                   ) : (
-                    `Fetch ${selectedCategories.length} Categor${selectedCategories.length === 1 ? 'y' : 'ies'}`
+                    `Fetch ${totalSelectedCount} Categor${totalSelectedCount === 1 ? 'y' : 'ies'}`
                   )}
                 </Button>
               </CollapsibleContent>
