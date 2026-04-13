@@ -296,11 +296,15 @@ IMPORTANT EXTRACTION RULES:
 2. Look for company names in directory listings, article mentions, search result snippets, etc.
 3. For each company, try to find: name, phone, email, address, what they do.
 
-PHONE NUMBER RULES:
-1. Lines with "EXTRACTED PHONE NUMBERS" are the MOST RELIABLE source — always use these first.
-2. Ethiopian numbers: +251 9XX XXX XXX or 09XX XXX XXX format. 10 digits with 0 prefix.
-3. If phone appears truncated or incomplete, still include it — partial info is better than none.
-4. The general 2merkato number (+251-93-010-5437) is NOT a company phone — ignore it.
+PHONE NUMBER RULES — CRITICAL, READ CAREFULLY:
+1. ONLY use phone numbers that appear VERBATIM in the source text. DO NOT invent, guess, or hallucinate phone numbers.
+2. Lines with "EXTRACTED PHONE NUMBERS" are the MOST RELIABLE source — always use these first.
+3. Ethiopian phone number formats: +251 9X XXX XXXX, 09X XXX XXXX, or +251 11 XXX XXXX.
+4. A valid Ethiopian mobile number has exactly 10 digits starting with 0 (e.g. 0911234567) or 13 characters with +251.
+5. A valid Ethiopian landline: 011 XXX XXXX (10 digits with 0).
+6. If a phone number has MORE than 10 digits (with 0 prefix) or MORE than 13 chars (with +251), it is INVALID — set phone to "".
+7. The general 2merkato number (+251-93-010-5437) is NOT a company phone — ignore it.
+8. If you are NOT 100% sure a phone number appears in the source text, set phone to "".
 
 EMAIL RULES:
 1. Lines with "EXTRACTED EMAILS" are the MOST RELIABLE source — always use these first.
@@ -394,21 +398,35 @@ CRITICAL: You MUST return at least the companies you find even if phone/email is
 
     console.log(`AI extracted ${leads.length} raw leads before filtering`);
 
+    // Validate Ethiopian phone number format
+    function isValidEthiopianPhone(phone: string): boolean {
+      if (!phone || phone.trim() === "") return false;
+      const cleaned = phone.replace(/[\s.\-()]/g, "");
+      // +251 followed by 9 digits = 13 chars, or 0 followed by 9 digits = 10 chars
+      if (cleaned.startsWith("+251") && cleaned.length === 13) return true;
+      if (cleaned.startsWith("0") && cleaned.length === 10) return true;
+      // Landline: +251 11 XXX XXXX = 13 chars or 011 XXX XXXX = 10 chars
+      return false;
+    }
+
     const normalizedLeads = leads
-      .map((l: any) => ({
-        company_name: l.company_name || "",
-        contact_person: l.contact_person || "",
-        phone: l.primary_phone || "",
-        secondary_phone: l.secondary_phone || "",
-        email: l.email || "",
-        address: l.address || "",
-        location_zone: l.location_zone || "",
-        category: CATEGORIES.includes(l.category) ? l.category : "",
-        relevance_score: Math.max(1, Math.min(100, l.relevance_score || 0)),
-        ai_reasoning: l.reasoning || "",
-        priority: ["high", "medium", "low"].includes(l.priority) ? l.priority : "medium",
-        source_url: l.source_url || "",
-      }))
+      .map((l: any) => {
+        const phone = l.primary_phone || "";
+        return {
+          company_name: l.company_name || "",
+          contact_person: l.contact_person || "",
+          phone: isValidEthiopianPhone(phone) ? phone : "",
+          secondary_phone: isValidEthiopianPhone(l.secondary_phone || "") ? (l.secondary_phone || "") : "",
+          email: l.email || "",
+          address: l.address || "",
+          location_zone: l.location_zone || "",
+          category: CATEGORIES.includes(l.category) ? l.category : "",
+          relevance_score: Math.max(1, Math.min(100, l.relevance_score || 0)),
+          ai_reasoning: l.reasoning || "",
+          priority: ["high", "medium", "low"].includes(l.priority) ? l.priority : "medium",
+          source_url: l.source_url || "",
+        };
+      })
       .filter((l: any) => l.company_name.trim() !== "")
       // Only keep leads that have at least a phone or email
       .filter((l: any) => l.phone.trim() !== "" || l.email.trim() !== "");

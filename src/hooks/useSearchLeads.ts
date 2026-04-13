@@ -55,9 +55,34 @@ export const useImportSearchResults = () => {
     mutationFn: async ({ leads, sourceQuery }: { leads: SearchLeadResult[]; sourceQuery: string }) => {
       if (!user) throw new Error('Not authenticated');
 
+      // Pre-fetch existing sourcing_queue entries to check for redundancy
+      const companyNames = leads.map(l => l.company_name.trim().toLowerCase());
+      const { data: existingEntries } = await supabase
+        .from('sourcing_queue')
+        .select('company_name, phone')
+        .limit(1000);
+
+      const existingNames = new Set(
+        (existingEntries || []).map(e => e.company_name?.trim().toLowerCase())
+      );
+      const existingPhones = new Set(
+        (existingEntries || []).filter(e => e.phone).map(e => e.phone!.replace(/[\s.\-()]/g, ''))
+      );
+
       let inserted = 0;
+      let skippedDuplicates = 0;
+
       for (const lead of leads) {
-        // Check duplicates
+        // Check if already in sourcing queue
+        const nameKey = lead.company_name.trim().toLowerCase();
+        const phoneKey = lead.phone?.replace(/[\s.\-()]/g, '') || '';
+
+        if (existingNames.has(nameKey) || (phoneKey && existingPhones.has(phoneKey))) {
+          skippedDuplicates++;
+          continue;
+        }
+
+        // Check duplicates against main leads table
         let isDuplicate = false;
         let duplicateLeadId: string | null = null;
 
@@ -92,14 +117,22 @@ export const useImportSearchResults = () => {
             priority: lead.priority,
           });
 
-        if (!error) inserted++;
+        if (!error) {
+          inserted++;
+          // Track for subsequent items in same batch
+          existingNames.add(nameKey);
+          if (phoneKey) existingPhones.add(phoneKey);
+        }
       }
 
-      return inserted;
+      return { inserted, skippedDuplicates };
     },
-    onSuccess: (count) => {
+    onSuccess: ({ inserted, skippedDuplicates }) => {
       queryClient.invalidateQueries({ queryKey: ['sourcing-queue'] });
-      toast({ title: `Imported ${count} lead(s) into vetting queue` });
+      const msg = skippedDuplicates > 0
+        ? `Imported ${inserted} lead(s), skipped ${skippedDuplicates} duplicate(s)`
+        : `Imported ${inserted} lead(s) into vetting queue`;
+      toast({ title: msg });
     },
     onError: (err: Error) => {
       toast({ title: 'Import failed', description: err.message, variant: 'destructive' });
