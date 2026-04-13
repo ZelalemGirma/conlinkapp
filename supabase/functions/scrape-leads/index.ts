@@ -10,6 +10,45 @@ const CATEGORIES = [
   "Interior Design & Architecture", "Financial Service",
 ];
 
+function extractDetailUrls(html: string, baseUrl: string): string[] {
+  const regex = /href="(https?:\/\/www\.2merkato\.com\/directory\/\d+[^"]*)"[^>]*>(?:show all digits|[^<]+)<\/a>/gi;
+  // Also grab main listing links
+  const listingRegex = /href="(https?:\/\/www\.2merkato\.com\/directory\/\d+-[^"]+)"/gi;
+  const urls = new Set<string>();
+  
+  let match;
+  while ((match = listingRegex.exec(html)) !== null) {
+    urls.add(match[1]);
+  }
+  return [...urls].slice(0, 20); // Limit to 20 detail pages
+}
+
+async function fetchPage(url: string): Promise<string> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; ConlinkBot/1.0)",
+        Accept: "text/html,application/xhtml+xml",
+      },
+    });
+    if (!response.ok) return "";
+    return await response.text();
+  } catch {
+    return "";
+  }
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -31,33 +70,40 @@ Deno.serve(async (req) => {
 
     console.log("Fetching URL:", formattedUrl);
 
-    const response = await fetch(formattedUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; ConlinkBot/1.0)",
-        Accept: "text/html,application/xhtml+xml",
-      },
-    });
-
-    if (!response.ok) {
-      return new Response(JSON.stringify({ error: `Failed to fetch URL: ${response.status}` }), {
+    const mainHtml = await fetchPage(formattedUrl);
+    if (!mainHtml) {
+      return new Response(JSON.stringify({ error: "Failed to fetch URL" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const html = await response.text();
+    // Check if this is a directory/listing page with detail links
+    const detailUrls = extractDetailUrls(mainHtml, formattedUrl);
+    
+    let combinedText = "";
+    
+    if (detailUrls.length > 0) {
+      console.log(`Found ${detailUrls.length} detail pages, fetching each...`);
+      
+      // Fetch detail pages in parallel (batches of 5)
+      const detailTexts: string[] = [];
+      for (let i = 0; i < detailUrls.length; i += 5) {
+        const batch = detailUrls.slice(i, i + 5);
+        const results = await Promise.all(batch.map(async (dUrl) => {
+          const html = await fetchPage(dUrl);
+          return html ? `--- DETAIL PAGE: ${dUrl} ---\n${stripHtml(html)}` : "";
+        }));
+        detailTexts.push(...results.filter(Boolean));
+      }
+      
+      // Combine listing page + all detail pages
+      combinedText = stripHtml(mainHtml) + "\n\n" + detailTexts.join("\n\n");
+    } else {
+      combinedText = stripHtml(mainHtml);
+    }
 
-    // Strip HTML to text
-    const textContent = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    const rawText = textContent.substring(0, 8000);
+    const rawText = combinedText.substring(0, 15000);
 
     // Pass to AI for intelligent extraction
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -69,21 +115,23 @@ Deno.serve(async (req) => {
     }
 
     const systemPrompt = `You are a data extraction AI for a construction industry CRM called Conlink. 
-Given raw website text, extract ALL potential business leads (companies) you can find.
+Given raw website text (which may include multiple detail pages), extract ALL potential business leads (companies) you can find.
+
+IMPORTANT: The text may contain data from a LISTING page AND individual DETAIL pages. The detail pages have COMPLETE phone numbers and full addresses. Always prefer the COMPLETE data from detail pages over truncated data from listing pages.
 
 For each company found, extract:
 - company_name: The company's legal/trade name
-- primary_phone: Main phone/mobile number. IMPORTANT: Ethiopian phone numbers must be complete — they should have 10 digits after the country code (e.g., +251 911 234 567). If a number appears truncated or incomplete (e.g., "+251 93 99 28" which is too short), set it to empty string "" rather than storing a partial number. Only include numbers that look complete and valid.
-- secondary_phone: Alternative phone if available (same completeness rules apply)
+- primary_phone: Main phone/mobile number. Ethiopian numbers must be complete with 9-10 digits after +251 (e.g., +251 911 234 567). If only a truncated number is available, set to empty "".
+- secondary_phone: Alternative phone if available (same rules)
 - email: Business email
-- address: Physical address
-- location_zone: District/area name if identifiable (e.g., Bole, Kirkos, Yeka for Addis Ababa)
+- address: Full physical address from the detail page
+- location_zone: District/area name (e.g., Bole, Kirkos, Yeka, Nifas Silk for Addis Ababa)
 - category: Best match from these 16 categories: ${CATEGORIES.join(", ")}
 - relevance_score: 1-100 score of how well the company fits the CONSTRUCTION industry
-- reasoning: Brief explanation of categorization and relevance (e.g., "Matched to 'Building Materials' based on keyword 'Cement' found on site"). If the phone number was incomplete/truncated on the source, mention that.
+- reasoning: Brief explanation (e.g., "Matched to 'Construction Firms' — Grade 1 Building Contractor")
 - priority: "high" if relevance_score >= 60, "medium" if 30-59, "low" if < 30
 
-If the company is clearly NOT construction-related (bakery, retail shop, restaurant, etc.), set priority to "low" and relevance_score below 30.
+If the company is clearly NOT construction-related, set priority to "low" and relevance_score below 30.
 
 Return results as a JSON array under the key "leads".`;
 
@@ -97,7 +145,7 @@ Return results as a JSON array under the key "leads".`;
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Extract business leads from this website text:\n\n${rawText}` },
+          { role: "user", content: `Extract business leads from this website data:\n\n${rawText}` },
         ],
         tools: [
           {
@@ -159,7 +207,6 @@ Return results as a JSON array under the key "leads".`;
       console.error("Failed to parse AI response:", e);
     }
 
-    // Normalize leads
     const normalizedLeads = leads.map((l: any) => ({
       company_name: l.company_name || "",
       contact_person: "",
@@ -174,7 +221,6 @@ Return results as a JSON array under the key "leads".`;
       priority: ["high", "medium", "low"].includes(l.priority) ? l.priority : "medium",
     }));
 
-    // Fallback if AI returned nothing
     if (normalizedLeads.length === 0) {
       normalizedLeads.push({
         company_name: "",
@@ -191,10 +237,13 @@ Return results as a JSON array under the key "leads".`;
       });
     }
 
+    console.log(`Extracted ${normalizedLeads.length} leads`);
+
     return new Response(JSON.stringify({
       success: true,
       leads: normalizedLeads,
       raw_text: rawText.substring(0, 5000),
+      detail_pages_fetched: detailUrls.length,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
