@@ -200,8 +200,10 @@ export type Database = {
           location_zone: string | null
           meeting_date: string | null
           phone: string | null
+          phone_numbers: string[]
           photo_url: string | null
           position: string | null
+          source: string
           specific_address: string | null
           status: Database["public"]["Enums"]["lead_status"]
           updated_at: string
@@ -222,8 +224,10 @@ export type Database = {
           location_zone?: string | null
           meeting_date?: string | null
           phone?: string | null
+          phone_numbers?: string[]
           photo_url?: string | null
           position?: string | null
+          source?: string
           specific_address?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           updated_at?: string
@@ -244,8 +248,10 @@ export type Database = {
           location_zone?: string | null
           meeting_date?: string | null
           phone?: string | null
+          phone_numbers?: string[]
           photo_url?: string | null
           position?: string | null
+          source?: string
           specific_address?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           updated_at?: string
