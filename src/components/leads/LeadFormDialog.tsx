@@ -62,6 +62,7 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
   const createLead = useCreateLead();
   const [capturingLocation, setCapturingLocation] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  const [showOtherSource, setShowOtherSource] = useState(false);
 
   const form = useForm<LeadFormValues>({
     resolver: zodResolver(leadFormSchema),
@@ -271,24 +272,47 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
                   <FormField
                     control={form.control}
                     name="source"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Source</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select source" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {LEAD_SOURCES.map(s => (
-                              <SelectItem key={s} value={s}>{s}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const isOther = field.value === '__other__' || (field.value && !LEAD_SOURCES.includes(field.value as any));
+                      return (
+                        <FormItem>
+                          <FormLabel>Source</FormLabel>
+                          <Select
+                            onValueChange={(v) => {
+                              if (v === '__other__') {
+                                field.onChange('');
+                                setShowOtherSource(true);
+                              } else {
+                                field.onChange(v);
+                                setShowOtherSource(false);
+                              }
+                            }}
+                            value={showOtherSource ? '__other__' : field.value || ''}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select source" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {LEAD_SOURCES.map(s => (
+                                <SelectItem key={s} value={s}>{s}</SelectItem>
+                              ))}
+                              <SelectItem value="__other__">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {showOtherSource && (
+                            <Input
+                              placeholder="Type source..."
+                              value={field.value || ''}
+                              onChange={(e) => field.onChange(e.target.value)}
+                              className="mt-2"
+                            />
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
                   <FormField
                     control={form.control}
