@@ -38,6 +38,36 @@ export type Database = {
         }
         Relationships: []
       }
+      campaigns: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       duplicate_attempts: {
         Row: {
           attempted_at: string
@@ -72,6 +102,7 @@ export type Database = {
       }
       interaction_logs: {
         Row: {
+          campaign_id: string | null
           created_at: string
           created_by: string
           id: string
@@ -80,6 +111,7 @@ export type Database = {
           type: Database["public"]["Enums"]["interaction_type"]
         }
         Insert: {
+          campaign_id?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -88,6 +120,7 @@ export type Database = {
           type: Database["public"]["Enums"]["interaction_type"]
         }
         Update: {
+          campaign_id?: string | null
           created_at?: string
           created_by?: string
           id?: string
@@ -96,6 +129,13 @@ export type Database = {
           type?: Database["public"]["Enums"]["interaction_type"]
         }
         Relationships: [
+          {
+            foreignKeyName: "interaction_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "interaction_logs_lead_id_fkey"
             columns: ["lead_id"]
@@ -146,6 +186,7 @@ export type Database = {
       leads: {
         Row: {
           assigned_rep_id: string | null
+          campaign_id: string | null
           campaign_tag: string | null
           category: Database["public"]["Enums"]["lead_category"]
           company_name: string
@@ -167,6 +208,7 @@ export type Database = {
         }
         Insert: {
           assigned_rep_id?: string | null
+          campaign_id?: string | null
           campaign_tag?: string | null
           category: Database["public"]["Enums"]["lead_category"]
           company_name: string
@@ -188,6 +230,7 @@ export type Database = {
         }
         Update: {
           assigned_rep_id?: string | null
+          campaign_id?: string | null
           campaign_tag?: string | null
           category?: Database["public"]["Enums"]["lead_category"]
           company_name?: string
@@ -207,40 +250,61 @@ export type Database = {
           status?: Database["public"]["Enums"]["lead_status"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "leads_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       meetings: {
         Row: {
+          campaign_id: string | null
           created_at: string
           created_by: string
           id: string
           lead_id: string
           location: string | null
           notes: string | null
+          reminder_sent: boolean
           scheduled_at: string
           updated_at: string
         }
         Insert: {
+          campaign_id?: string | null
           created_at?: string
           created_by: string
           id?: string
           lead_id: string
           location?: string | null
           notes?: string | null
+          reminder_sent?: boolean
           scheduled_at: string
           updated_at?: string
         }
         Update: {
+          campaign_id?: string | null
           created_at?: string
           created_by?: string
           id?: string
           lead_id?: string
           location?: string | null
           notes?: string | null
+          reminder_sent?: boolean
           scheduled_at?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "meetings_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "meetings_lead_id_fkey"
             columns: ["lead_id"]
@@ -252,6 +316,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_campaign_id: string | null
           avatar_url: string | null
           created_at: string
           deactivated: boolean
@@ -261,6 +326,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          active_campaign_id?: string | null
           avatar_url?: string | null
           created_at?: string
           deactivated?: boolean
@@ -270,6 +336,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          active_campaign_id?: string | null
           avatar_url?: string | null
           created_at?: string
           deactivated?: boolean
@@ -278,7 +345,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_active_campaign_id_fkey"
+            columns: ["active_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rep_badges: {
         Row: {
@@ -352,6 +427,7 @@ export type Database = {
           ai_reasoning: string | null
           approved_by: string | null
           assigned_rep_id: string | null
+          campaign_id: string | null
           category: string | null
           company_name: string
           contact_person: string
@@ -374,6 +450,7 @@ export type Database = {
           ai_reasoning?: string | null
           approved_by?: string | null
           assigned_rep_id?: string | null
+          campaign_id?: string | null
           category?: string | null
           company_name?: string
           contact_person?: string
@@ -396,6 +473,7 @@ export type Database = {
           ai_reasoning?: string | null
           approved_by?: string | null
           assigned_rep_id?: string | null
+          campaign_id?: string | null
           category?: string | null
           company_name?: string
           contact_person?: string
@@ -414,6 +492,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sourcing_queue_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sourcing_queue_duplicate_lead_id_fkey"
             columns: ["duplicate_lead_id"]
