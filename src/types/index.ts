@@ -61,15 +61,17 @@ export const LOCATION_ZONES = [
 ];
 
 export const LEAD_SOURCES = [
+  'Walk-in',
+  'Addis Chamber',
+  'TikTok',
+  'Exhibition',
+  'Office',
   'Referral',
   'Website',
   'Cold Call',
-  'Exhibition',
   'Social Media',
-  'Walk-in',
   'Email Campaign',
   'Partner',
-  'Other',
 ] as const;
 
 export const LEAD_STATUS_CONFIG: Record<LeadStatus, { label: string; color: string }> = {
