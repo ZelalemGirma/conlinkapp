@@ -90,13 +90,6 @@ export const useUpdateLead = () => {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: LeadUpdate & { id: string }) => {
-      // Get old lead to detect assignment changes
-      const { data: oldLead } = await supabase
-        .from('leads')
-        .select('assigned_rep_id, company_name, category')
-        .eq('id', id)
-        .single();
-
       const { data, error } = await supabase
         .from('leads')
         .update(updates)
@@ -104,35 +97,6 @@ export const useUpdateLead = () => {
         .select()
         .single();
       if (error) throw error;
-
-      // Send email if rep assignment changed
-      if (
-        updates.assigned_rep_id &&
-        updates.assigned_rep_id !== oldLead?.assigned_rep_id
-      ) {
-        // Get assigned rep's email
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('user_id, full_name')
-          .eq('user_id', updates.assigned_rep_id)
-          .single();
-
-        if (profile) {
-          // We need the user's email from auth - use edge function
-          supabase.functions.invoke('send-transactional-email', {
-            body: {
-              templateName: 'lead-assignment',
-              recipientEmail: '', // Will be resolved server-side via profile
-              idempotencyKey: `lead-assign-${id}-${updates.assigned_rep_id}`,
-              templateData: {
-                companyName: data.company_name,
-                category: data.category,
-              },
-            },
-          }).catch(() => {}); // Non-blocking
-        }
-      }
-
       return data;
     },
     onSuccess: () => {
