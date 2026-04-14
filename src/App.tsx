@@ -19,6 +19,7 @@ import SettingsPage from "@/pages/Settings";
 import Reports from "@/pages/Reports";
 import Leaderboard from "@/pages/Leaderboard";
 import UserManual from "@/pages/UserManual";
+import Unsubscribe from "@/pages/Unsubscribe";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +64,7 @@ const App = () => (
               <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
               <Route path="/manual" element={<ProtectedRoute><UserManual /></ProtectedRoute>} />
+              <Route path="/unsubscribe" element={<Unsubscribe />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </CampaignProvider>
