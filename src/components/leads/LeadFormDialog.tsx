@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCreateLead } from '@/hooks/useLeads';
 import { useDuplicateCheck } from '@/hooks/useDuplicateCheck';
-import { LEAD_CATEGORIES, LOCATION_ZONES } from '@/types';
+import { LEAD_CATEGORIES, LOCATION_ZONES, LEAD_SOURCES } from '@/types';
 import DuplicateWarning from '@/components/leads/DuplicateWarning';
 import CameraScanDialog from '@/components/leads/CameraScanDialog';
 import {
@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MapPin, Loader2, Camera } from 'lucide-react';
+import { MapPin, Loader2, Camera, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const leadFormSchema = z.object({
@@ -40,8 +40,10 @@ const leadFormSchema = z.object({
   contact_person: z.string().trim().max(100).default(''),
   position: z.string().trim().max(100).optional(),
   phone: z.string().trim().max(20).optional(),
+  extra_phones: z.array(z.object({ value: z.string().trim().max(20) })).max(4).default([]),
   email: z.string().trim().email('Invalid email').max(255).or(z.literal('')).optional(),
   category: z.enum(LEAD_CATEGORIES as [string, ...string[]]),
+  source: z.string().optional(),
   specific_address: z.string().trim().max(500).optional(),
   location_zone: z.string().optional(),
   gps_lat: z.coerce.number().min(-90).max(90).optional().or(z.literal('')),
@@ -68,11 +70,18 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
       contact_person: '',
       position: '',
       phone: '',
+      extra_phones: [],
       email: '',
+      source: '',
       specific_address: '',
       location_zone: '',
       campaign_tag: '',
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'extra_phones',
   });
 
   const watchedCompany = useWatch({ control: form.control, name: 'company_name' }) || '';
@@ -108,6 +117,7 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
   };
 
   const onSubmit = async (values: LeadFormValues) => {
+    const phoneNumbers = [values.phone, ...values.extra_phones.map(p => p.value)].filter(Boolean) as string[];
     await createLead.mutateAsync({
       company_name: values.company_name,
       contact_person: values.contact_person || '',
@@ -115,16 +125,20 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
       phone: values.phone || '',
       email: values.email || '',
       category: values.category as any,
+      source: values.source || '',
       specific_address: values.specific_address || '',
       location_zone: values.location_zone || '',
       gps_lat: typeof values.gps_lat === 'number' ? values.gps_lat : null,
       gps_lng: typeof values.gps_lng === 'number' ? values.gps_lng : null,
       campaign_tag: values.campaign_tag || '',
+      phone_numbers: phoneNumbers,
       status: 'draft',
     });
     form.reset();
     onOpenChange(false);
   };
+
+  const canAddPhone = fields.length < 4;
 
   return (
     <>
@@ -141,7 +155,6 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
           <ScrollArea className="max-h-[70vh] pr-4">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-4">
-                {/* Duplicate warning */}
                 {duplicates && duplicates.length > 0 && (
                   <DuplicateWarning duplicates={duplicates} />
                 )}
@@ -180,6 +193,7 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
                       </FormItem>
                     )}
                   />
+                  {/* Primary phone */}
                   <FormField
                     control={form.control}
                     name="phone"
@@ -202,11 +216,41 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
                       </FormItem>
                     )}
                   />
+
+                  {/* Extra phone numbers */}
+                  {fields.map((field, index) => (
+                    <FormField
+                      key={field.id}
+                      control={form.control}
+                      name={`extra_phones.${index}.value`}
+                      render={({ field: f }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center justify-between">
+                            Phone {index + 2}
+                            <Button type="button" variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => remove(index)}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </FormLabel>
+                          <FormControl><Input placeholder="+251..." type="tel" {...f} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+
+                  {canAddPhone && (
+                    <div className="flex items-end">
+                      <Button type="button" variant="outline" size="sm" onClick={() => append({ value: '' })} className="gap-1.5">
+                        <Plus className="h-3.5 w-3.5" /> Add Another Phone
+                      </Button>
+                    </div>
+                  )}
+
                   <FormField
                     control={form.control}
                     name="category"
                     render={({ field }) => (
-                      <FormItem className="md:col-span-2">
+                      <FormItem>
                         <FormLabel>Category *</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
@@ -217,6 +261,28 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
                           <SelectContent>
                             {LEAD_CATEGORIES.map(cat => (
                               <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="source"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Source</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select source" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {LEAD_SOURCES.map(s => (
+                              <SelectItem key={s} value={s}>{s}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>

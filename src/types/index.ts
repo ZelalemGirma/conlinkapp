@@ -60,6 +60,18 @@ export const LOCATION_ZONES = [
   'Lideta', 'Kolfe Keranio', 'Gulele', 'Akaky Kaliti', 'Lemi Kura',
 ];
 
+export const LEAD_SOURCES = [
+  'Referral',
+  'Website',
+  'Cold Call',
+  'Exhibition',
+  'Social Media',
+  'Walk-in',
+  'Email Campaign',
+  'Partner',
+  'Other',
+] as const;
+
 export const LEAD_STATUS_CONFIG: Record<LeadStatus, { label: string; color: string }> = {
   draft: { label: 'Draft', color: 'bg-muted text-muted-foreground' },
   pending: { label: 'Pending Approval', color: 'bg-warning text-warning-foreground' },
