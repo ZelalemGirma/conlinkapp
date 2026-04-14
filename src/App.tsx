@@ -19,6 +19,7 @@ import SettingsPage from "@/pages/Settings";
 import Reports from "@/pages/Reports";
 import Leaderboard from "@/pages/Leaderboard";
 import UserManual from "@/pages/UserManual";
+import Unsubscribe from "@/pages/Unsubscribe";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
