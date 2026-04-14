@@ -10,7 +10,7 @@ export interface Notification {
   id: string;
   title: string;
   description: string;
-  type: 'status_change' | 'assignment' | 'overdue';
+  type: 'status_change' | 'assignment' | 'overdue' | 'meeting_reminder';
   timestamp: Date;
   read: boolean;
   leadId?: string;
@@ -71,6 +71,48 @@ export const useNotifications = () => {
     checkOverdue();
   }, [user, addNotification]);
 
+  // Check for upcoming meetings (within 12 hours)
+  useEffect(() => {
+    if (!user) return;
+
+    const checkUpcomingMeetings = async () => {
+      const now = new Date();
+      const twelveHoursLater = new Date(now.getTime() + 12 * 60 * 60 * 1000);
+
+      const { data: meetings } = await supabase
+        .from('meetings')
+        .select('id, lead_id, scheduled_at, location')
+        .gte('scheduled_at', now.toISOString())
+        .lte('scheduled_at', twelveHoursLater.toISOString())
+        .eq('created_by', user.id);
+
+      if (!meetings || meetings.length === 0) return;
+
+      // Get lead names for the meetings
+      const leadIds = [...new Set(meetings.map(m => m.lead_id))];
+      const { data: leads } = await supabase
+        .from('leads')
+        .select('id, company_name')
+        .in('id', leadIds);
+
+      const leadMap = Object.fromEntries((leads || []).map(l => [l.id, l.company_name]));
+
+      meetings.forEach(meeting => {
+        const scheduledAt = new Date(meeting.scheduled_at);
+        const hoursUntil = Math.round((scheduledAt.getTime() - now.getTime()) / (1000 * 60 * 60));
+        const companyName = leadMap[meeting.lead_id] || 'Unknown';
+        addNotification({
+          title: 'Meeting Reminder',
+          description: `${companyName} — in ${hoursUntil}h${meeting.location ? ` at ${meeting.location}` : ''}`,
+          type: 'meeting_reminder',
+          leadId: meeting.lead_id,
+        });
+      });
+    };
+
+    checkUpcomingMeetings();
+  }, [user, addNotification]);
+
   // Subscribe to realtime lead changes
   useEffect(() => {
     if (!user) return;
@@ -84,7 +126,6 @@ export const useNotifications = () => {
           const newLead = payload.new as LeadRow;
           const oldLead = payload.old as Partial<LeadRow>;
 
-          // Status change notification
           if (oldLead.status && newLead.status !== oldLead.status) {
             const statusLabel = LEAD_STATUS_CONFIG[newLead.status]?.label || newLead.status;
             if (newLead.created_by === user.id || newLead.assigned_rep_id === user.id) {
@@ -97,7 +138,6 @@ export const useNotifications = () => {
             }
           }
 
-          // Assignment notification
           if (newLead.assigned_rep_id === user.id && oldLead.assigned_rep_id !== user.id) {
             addNotification({
               title: 'New Lead Assigned',
