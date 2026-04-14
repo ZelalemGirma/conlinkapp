@@ -555,6 +555,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_target_actual: {
+        Args: {
+          _target_type: Database["public"]["Enums"]["target_type"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
       merge_leads: {
         Args: { _primary_id: string; _secondary_id: string }
         Returns: undefined
