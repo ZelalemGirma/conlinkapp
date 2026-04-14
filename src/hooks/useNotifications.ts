@@ -16,7 +16,7 @@ export interface Notification {
   leadId?: string;
 }
 
-export const useNotifications = () => {
+export const useNotifications = () => { // v2
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
