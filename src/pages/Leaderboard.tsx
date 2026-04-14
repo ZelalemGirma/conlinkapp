@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfiles } from '@/hooks/useProfiles';
+import { useCampaignFilter } from '@/hooks/useCampaignFilter';
 import { LEAD_CATEGORIES, LOCATION_ZONES, LEAD_STATUS_CONFIG } from '@/types';
 import type { LeadStatus } from '@/types';
 import type { Database } from '@/integrations/supabase/types';
@@ -14,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import MultiSelectFilter from '@/components/reports/MultiSelectFilter';
 import { Trophy, Award, Star, MapPin, Phone, Briefcase, TrendingUp } from 'lucide-react';
+import { format } from 'date-fns';
 
 type LeadRow = Database['public']['Tables']['leads']['Row'];
 type InteractionRow = Database['public']['Tables']['interaction_logs']['Row'];
@@ -21,45 +23,46 @@ type MeetingRow = Database['public']['Tables']['meetings']['Row'];
 
 const ALL_STATUSES = Object.keys(LEAD_STATUS_CONFIG) as LeadStatus[];
 
-const BADGE_CONFIG: Record<string, { icon: React.ElementType; color: string }> = {
-  closer: { icon: Trophy, color: 'bg-amber-500/10 text-amber-600 border-amber-500/30' },
-  prospector: { icon: Star, color: 'bg-blue-500/10 text-blue-600 border-blue-500/30' },
-  road_warrior: { icon: MapPin, color: 'bg-green-500/10 text-green-600 border-green-500/30' },
-  caller: { icon: Phone, color: 'bg-purple-500/10 text-purple-600 border-purple-500/30' },
-  king_of_zone: { icon: Award, color: 'bg-primary/10 text-primary border-primary/30' },
-};
-
 const Leaderboard: React.FC = () => {
   const { role } = useAuth();
   const { data: profiles } = useProfiles();
+  const { campaignId } = useCampaignFilter();
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedZones, setSelectedZones] = useState<string[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [campaignFilter, setCampaignFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const { data: allLeads = [] } = useQuery({
-    queryKey: ['leaderboard-leads'],
+    queryKey: ['leaderboard-leads', campaignId],
     queryFn: async () => {
-      const { data, error } = await supabase.from('leads').select('*');
+      let q = supabase.from('leads').select('*');
+      if (campaignId) q = q.eq('campaign_id', campaignId);
+      const { data, error } = await q;
       if (error) throw error;
       return data as LeadRow[];
     },
   });
 
   const { data: allInteractions = [] } = useQuery({
-    queryKey: ['leaderboard-interactions'],
+    queryKey: ['leaderboard-interactions', campaignId],
     queryFn: async () => {
-      const { data, error } = await supabase.from('interaction_logs').select('*');
+      let q = supabase.from('interaction_logs').select('*');
+      if (campaignId) q = q.eq('campaign_id', campaignId);
+      const { data, error } = await q;
       if (error) throw error;
       return data as InteractionRow[];
     },
   });
 
   const { data: allMeetings = [] } = useQuery({
-    queryKey: ['leaderboard-meetings'],
+    queryKey: ['leaderboard-meetings', campaignId],
     queryFn: async () => {
-      const { data, error } = await supabase.from('meetings').select('*');
+      let q = supabase.from('meetings').select('*');
+      if (campaignId) q = q.eq('campaign_id', campaignId);
+      const { data, error } = await q;
       if (error) throw error;
       return data as MeetingRow[];
     },
@@ -91,8 +94,17 @@ const Leaderboard: React.FC = () => {
       const tag = campaignFilter.trim().toLowerCase();
       leads = leads.filter(l => l.campaign_tag?.toLowerCase().includes(tag));
     }
+    // Date filter
+    if (dateFrom) {
+      const from = new Date(dateFrom);
+      leads = leads.filter(l => new Date(l.created_at) >= from);
+    }
+    if (dateTo) {
+      const to = new Date(dateTo + 'T23:59:59');
+      leads = leads.filter(l => new Date(l.created_at) <= to);
+    }
     return leads;
-  }, [allLeads, selectedCategories, selectedZones, selectedStatuses, campaignFilter]);
+  }, [allLeads, selectedCategories, selectedZones, selectedStatuses, campaignFilter, dateFrom, dateTo]);
 
   const filteredLeadIds = useMemo(() => new Set(filteredLeads.map(l => l.id)), [filteredLeads]);
   const filteredInteractions = useMemo(
@@ -107,37 +119,27 @@ const Leaderboard: React.FC = () => {
   // Calculate weighted scores per rep
   const rankings = useMemo(() => {
     const repMap = new Map<string, {
-      deals: number;
-      meetings: number;
-      newLeads: number;
-      totalLeads: number;
-      siteVisits: number;
-      calls: number;
+      deals: number; meetings: number; newLeads: number; totalLeads: number; siteVisits: number; calls: number;
     }>();
 
-    // Initialize for all reps
     repUserIds.forEach(id => {
       repMap.set(id, { deals: 0, meetings: 0, newLeads: 0, totalLeads: 0, siteVisits: 0, calls: 0 });
     });
 
-    // Count leads
     filteredLeads.forEach(l => {
       const repId = l.assigned_rep_id || l.created_by;
       if (!repMap.has(repId)) repMap.set(repId, { deals: 0, meetings: 0, newLeads: 0, totalLeads: 0, siteVisits: 0, calls: 0 });
       const entry = repMap.get(repId)!;
       entry.totalLeads++;
       if (l.status === 'deal_closed') entry.deals++;
-      // Count as new lead if created by this rep
       if (l.created_by === repId) entry.newLeads++;
     });
 
-    // Count meetings
     filteredMeetings.forEach(m => {
       const entry = repMap.get(m.created_by);
       if (entry) entry.meetings++;
     });
 
-    // Count interactions
     filteredInteractions.forEach(i => {
       const entry = repMap.get(i.created_by);
       if (entry) {
@@ -148,16 +150,9 @@ const Leaderboard: React.FC = () => {
 
     return Array.from(repMap.entries())
       .map(([userId, stats]) => {
-        // Weighted score: 50% deals, 30% meetings, 20% lead accuracy
         const accuracy = stats.totalLeads > 0 ? (stats.deals / stats.totalLeads) : 0;
         const score = (stats.deals * 50) + (stats.meetings * 30) + (accuracy * 20 * 100);
-        return {
-          userId,
-          name: getRepName(userId),
-          ...stats,
-          accuracy,
-          score,
-        };
+        return { userId, name: getRepName(userId), ...stats, accuracy, score };
       })
       .filter(r => r.name !== 'Unknown' && (r.totalLeads > 0 || r.meetings > 0))
       .sort((a, b) => b.score - a.score);
@@ -171,38 +166,17 @@ const Leaderboard: React.FC = () => {
       if (!badgeMap.has(userId)) badgeMap.set(userId, []);
       badgeMap.get(userId)!.push(badge);
     };
-
-    // Closer: highest deals
     const maxDeals = Math.max(...rankings.map(r => r.deals));
-    if (maxDeals > 0) {
-      rankings.filter(r => r.deals === maxDeals).forEach(r => addBadge(r.userId, 'Closer'));
-    }
-
-    // Prospector: most new leads
+    if (maxDeals > 0) rankings.filter(r => r.deals === maxDeals).forEach(r => addBadge(r.userId, 'Closer'));
     const maxNewLeads = Math.max(...rankings.map(r => r.newLeads));
-    if (maxNewLeads > 0) {
-      rankings.filter(r => r.newLeads === maxNewLeads).forEach(r => addBadge(r.userId, 'Prospector'));
-    }
-
-    // Road Warrior: most site visits
+    if (maxNewLeads > 0) rankings.filter(r => r.newLeads === maxNewLeads).forEach(r => addBadge(r.userId, 'Prospector'));
     const maxVisits = Math.max(...rankings.map(r => r.siteVisits));
-    if (maxVisits > 0) {
-      rankings.filter(r => r.siteVisits === maxVisits).forEach(r => addBadge(r.userId, 'Road Warrior'));
-    }
-
-    // Caller: most phone calls
+    if (maxVisits > 0) rankings.filter(r => r.siteVisits === maxVisits).forEach(r => addBadge(r.userId, 'Road Warrior'));
     const maxCalls = Math.max(...rankings.map(r => r.calls));
-    if (maxCalls > 0) {
-      rankings.filter(r => r.calls === maxCalls).forEach(r => addBadge(r.userId, 'Top Caller'));
+    if (maxCalls > 0) rankings.filter(r => r.calls === maxCalls).forEach(r => addBadge(r.userId, 'Top Caller'));
+    if (selectedZones.length === 1 && rankings.length > 0) {
+      addBadge(rankings[0].userId, `King of ${selectedZones[0]}`);
     }
-
-    // Zone kings
-    if (selectedZones.length === 1) {
-      if (rankings.length > 0) {
-        addBadge(rankings[0].userId, `King of ${selectedZones[0]}`);
-      }
-    }
-
     return badgeMap;
   }, [rankings, selectedZones]);
 
@@ -229,7 +203,7 @@ const Leaderboard: React.FC = () => {
           <CardTitle className="text-base">Filter Rankings</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div className="space-y-1">
               <Label className="text-xs">Category</Label>
               <MultiSelectFilter label="All Categories" options={categoryOptions} selected={selectedCategories} onChange={setSelectedCategories} />
@@ -245,6 +219,14 @@ const Leaderboard: React.FC = () => {
             <div className="space-y-1">
               <Label className="text-xs">Campaign Tag</Label>
               <Input placeholder="e.g. Edition 13" value={campaignFilter} onChange={e => setCampaignFilter(e.target.value)} className="h-8 text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">From Date</Label>
+              <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-8 text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">To Date</Label>
+              <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-8 text-xs" />
             </div>
           </div>
         </CardContent>
@@ -277,9 +259,7 @@ const Leaderboard: React.FC = () => {
                   {repBadges.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-3 justify-center">
                       {repBadges.map(b => (
-                        <Badge key={b} variant="outline" className="text-[10px]">
-                          {b}
-                        </Badge>
+                        <Badge key={b} variant="outline" className="text-[10px]">{b}</Badge>
                       ))}
                     </div>
                   )}
