@@ -62,6 +62,7 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
   const createLead = useCreateLead();
   const [capturingLocation, setCapturingLocation] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  const [showOtherSource, setShowOtherSource] = useState(false);
 
   const form = useForm<LeadFormValues>({
     resolver: zodResolver(leadFormSchema),
