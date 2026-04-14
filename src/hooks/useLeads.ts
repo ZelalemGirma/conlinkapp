@@ -14,6 +14,7 @@ export const useLeads = (filters?: {
   category?: string;
   status?: string;
   zone?: string;
+  source?: string;
 }) => {
   const { campaignId } = useCampaignFilter();
 
@@ -42,6 +43,9 @@ export const useLeads = (filters?: {
       }
       if (filters?.zone) {
         query = query.eq('location_zone', filters.zone);
+      }
+      if (filters?.source) {
+        query = query.eq('source', filters.source);
       }
 
       const { data, error } = await query;

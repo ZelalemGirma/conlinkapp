@@ -14,6 +14,7 @@ export const useSalesTargets = () => {
       if (error) throw error;
       return data;
     },
+    refetchInterval: 30000,
   });
 };
 
@@ -32,6 +33,7 @@ export const useMyTargets = () => {
       return data;
     },
     enabled: !!user,
+    refetchInterval: 30000,
   });
 };
 
@@ -46,6 +48,7 @@ export const useCreateTarget = () => {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sales-targets'] });
+      qc.invalidateQueries({ queryKey: ['my-targets'] });
       toast({ title: 'Target created' });
     },
     onError: (e: Error) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
@@ -63,6 +66,7 @@ export const useUpdateTarget = () => {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sales-targets'] });
+      qc.invalidateQueries({ queryKey: ['my-targets'] });
       toast({ title: 'Target updated' });
     },
     onError: (e: Error) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),

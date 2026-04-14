@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Phone,
   Mail,
@@ -35,8 +36,11 @@ import {
   XCircle,
   Clock,
   Calendar,
+  Globe,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import type { Database } from '@/integrations/supabase/types';
 
 type LeadRow = Database['public']['Tables']['leads']['Row'];
@@ -60,6 +64,22 @@ const LeadDetailDialog: React.FC<LeadDetailDialogProps> = ({ lead, open, onOpenC
   const [assignRepId, setAssignRepId] = useState('');
   const [meetingOpen, setMeetingOpen] = useState(false);
 
+  // Fetch meetings for this lead
+  const { data: meetings } = useQuery({
+    queryKey: ['lead-meetings', lead?.id],
+    queryFn: async () => {
+      if (!lead) return [];
+      const { data, error } = await supabase
+        .from('meetings')
+        .select('*')
+        .eq('lead_id', lead.id)
+        .order('scheduled_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!lead && open,
+  });
+
   if (!lead) return null;
 
   const isPending = lead.status === 'pending';
@@ -69,6 +89,10 @@ const LeadDetailDialog: React.FC<LeadDetailDialogProps> = ({ lead, open, onOpenC
   const canUpdateStatus = !isDraft && !isPending && (
     lead.assigned_rep_id === user?.id || lead.created_by === user?.id || role === 'admin' || role === 'manager'
   );
+
+  const phoneNumbers: string[] = (lead as any).phone_numbers?.length
+    ? (lead as any).phone_numbers
+    : lead.phone ? [lead.phone] : [];
 
   const handleSubmitForApproval = () => {
     updateLead.mutate({ id: lead.id, status: 'pending' });
@@ -120,34 +144,30 @@ const LeadDetailDialog: React.FC<LeadDetailDialogProps> = ({ lead, open, onOpenC
           </DialogHeader>
           <ScrollArea className="max-h-[70vh] pr-4">
             <Tabs defaultValue="details">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsList className="grid w-full grid-cols-3 mb-4">
                 <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="meetings">Meetings</TabsTrigger>
                 <TabsTrigger value="interactions">Interactions</TabsTrigger>
               </TabsList>
 
               <TabsContent value="details" className="space-y-4 mt-0">
-                {/* Status */}
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm text-muted-foreground">Status:</span>
                   <LeadStatusBadge status={lead.status} />
-                  {lead.meeting_date && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {format(new Date(lead.meeting_date), 'MMM d, yyyy h:mm a')}
-                    </span>
-                  )}
                 </div>
 
-                {/* Lead Info */}
                 <div className="space-y-1">
                   <InfoRow icon={User} label="Contact Person" value={lead.contact_person} />
                   <InfoRow icon={Tag} label="Position" value={lead.position} />
-                  <InfoRow
-                    icon={Phone}
-                    label="Phone"
-                    value={lead.phone}
-                    href={lead.phone ? `tel:${lead.phone}` : undefined}
-                  />
+                  {phoneNumbers.map((ph, i) => (
+                    <InfoRow
+                      key={i}
+                      icon={Phone}
+                      label={i === 0 ? 'Phone' : `Phone ${i + 1}`}
+                      value={ph}
+                      href={`tel:${ph}`}
+                    />
+                  ))}
                   <InfoRow
                     icon={Mail}
                     label="Email"
@@ -155,6 +175,7 @@ const LeadDetailDialog: React.FC<LeadDetailDialogProps> = ({ lead, open, onOpenC
                     href={lead.email ? `mailto:${lead.email}` : undefined}
                   />
                   <InfoRow icon={Tag} label="Category" value={lead.category} />
+                  <InfoRow icon={Globe} label="Source" value={(lead as any).source} />
                   <InfoRow icon={MapPin} label="Address" value={lead.specific_address} />
                   <InfoRow icon={MapPin} label="Zone" value={lead.location_zone} />
                   <InfoRow icon={Tag} label="Campaign" value={lead.campaign_tag} />
@@ -165,7 +186,6 @@ const LeadDetailDialog: React.FC<LeadDetailDialogProps> = ({ lead, open, onOpenC
 
                 <Separator />
 
-                {/* Actions */}
                 {canSubmit && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium flex items-center gap-2">
@@ -222,6 +242,41 @@ const LeadDetailDialog: React.FC<LeadDetailDialogProps> = ({ lead, open, onOpenC
                       </SelectContent>
                     </Select>
                   </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="meetings" className="mt-0 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">Scheduled Meetings</h4>
+                  <Button size="sm" variant="outline" onClick={() => setMeetingOpen(true)} className="gap-1.5">
+                    <Calendar className="h-3.5 w-3.5" /> Schedule
+                  </Button>
+                </div>
+                {!meetings?.length ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">No meetings scheduled yet.</p>
+                ) : (
+                  meetings.map(m => (
+                    <Card key={m.id}>
+                      <CardContent className="p-3 space-y-1.5">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Calendar className="h-4 w-4 text-primary" />
+                          {format(new Date(m.scheduled_at), 'MMM d, yyyy')}
+                          <span className="text-muted-foreground">at</span>
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                          {format(new Date(m.scheduled_at), 'h:mm a')}
+                        </div>
+                        {m.location && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {m.location}
+                          </div>
+                        )}
+                        {m.notes && (
+                          <p className="text-xs text-muted-foreground">{m.notes}</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))
                 )}
               </TabsContent>
 
