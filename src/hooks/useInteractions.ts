@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useCampaignFilter } from '@/hooks/useCampaignFilter';
 import type { Database } from '@/integrations/supabase/types';
 
 type InteractionRow = Database['public']['Tables']['interaction_logs']['Row'];
@@ -27,13 +28,16 @@ export const useCreateInteraction = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { campaignId } = useCampaignFilter();
 
   return useMutation({
     mutationFn: async (interaction: Omit<InteractionInsert, 'created_by'>) => {
       if (!user) throw new Error('Not authenticated');
+      const insertData: any = { ...interaction, created_by: user.id };
+      if (campaignId) insertData.campaign_id = campaignId;
       const { data, error } = await supabase
         .from('interaction_logs')
-        .insert({ ...interaction, created_by: user.id })
+        .insert(insertData)
         .select()
         .single();
       if (error) throw error;

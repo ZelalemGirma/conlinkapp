@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSalesTargets, useCreateTarget, useUpdateTarget } from '@/hooks/useSalesTargets';
+import { useSalesTargets, useMyTargets, useCreateTarget, useUpdateTarget } from '@/hooks/useSalesTargets';
 import { useProfiles } from '@/hooks/useProfiles';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,8 +25,16 @@ const TARGET_TYPE_CONFIG = {
 type TargetType = keyof typeof TARGET_TYPE_CONFIG;
 
 const Targets = () => {
-  const { role } = useAuth();
-  const { data: targets, isLoading } = useSalesTargets();
+  const { role, user } = useAuth();
+  const isManagerOrAdmin = role === 'admin' || role === 'manager';
+
+  // Reps see only their targets; admin/manager see all
+  const { data: allTargets, isLoading: allLoading } = useSalesTargets();
+  const { data: myTargets, isLoading: myLoading } = useMyTargets();
+
+  const targets = isManagerOrAdmin ? allTargets : myTargets;
+  const isLoading = isManagerOrAdmin ? allLoading : myLoading;
+
   const { data: profiles } = useProfiles();
   const createTarget = useCreateTarget();
   const updateTarget = useUpdateTarget();
@@ -40,7 +48,6 @@ const Targets = () => {
   const [activeTab, setActiveTab] = useState<string>('all');
 
   const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p.full_name]));
-  const isManagerOrAdmin = role === 'admin' || role === 'manager';
 
   const filteredTargets = activeTab === 'all'
     ? targets
@@ -69,9 +76,10 @@ const Targets = () => {
     );
   };
 
-  // Summary cards
+  // Summary cards — show relevant targets
+  const summaryTargets = targets ?? [];
   const typeSummary = Object.keys(TARGET_TYPE_CONFIG).map(type => {
-    const typeTargets = targets?.filter(t => (t as any).target_type === type) ?? [];
+    const typeTargets = summaryTargets.filter(t => (t as any).target_type === type);
     const totalTarget = typeTargets.reduce((s, t) => s + t.target_count, 0);
     const totalActual = typeTargets.reduce((s, t) => s + t.actual_count, 0);
     return { type: type as TargetType, count: typeTargets.length, totalTarget, totalActual };
@@ -81,8 +89,12 @@ const Targets = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-secondary">Sales Targets</h1>
-          <p className="text-muted-foreground">Set and track team targets by type</p>
+          <h1 className="text-2xl font-bold text-secondary">
+            {isManagerOrAdmin ? 'Sales Targets' : 'My Targets'}
+          </h1>
+          <p className="text-muted-foreground">
+            {isManagerOrAdmin ? 'Set and track team targets by type' : 'View your assigned targets and progress'}
+          </p>
         </div>
         {isManagerOrAdmin && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -180,7 +192,7 @@ const Targets = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Rep</TableHead>
+                    {isManagerOrAdmin && <TableHead>Rep</TableHead>}
                     <TableHead>Type</TableHead>
                     <TableHead>Period</TableHead>
                     <TableHead>Target</TableHead>
@@ -196,8 +208,8 @@ const Targets = () => {
                     ))
                   ) : !filteredTargets?.length ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                        No targets set yet.
+                      <TableCell colSpan={isManagerOrAdmin ? 7 : 5} className="text-center py-12 text-muted-foreground">
+                        {isManagerOrAdmin ? 'No targets set yet.' : 'No targets assigned to you yet.'}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -208,7 +220,9 @@ const Targets = () => {
                       const pct = Math.min(100, Math.round((t.actual_count / Math.max(1, t.target_count)) * 100));
                       return (
                         <TableRow key={t.id}>
-                          <TableCell className="font-medium">{profileMap[t.rep_id] || 'Unknown'}</TableCell>
+                          {isManagerOrAdmin && (
+                            <TableCell className="font-medium">{profileMap[t.rep_id] || 'Unknown'}</TableCell>
+                          )}
                           <TableCell>
                             <Badge variant="outline" className={`gap-1 ${cfg.color}`}>
                               <Icon className="h-3 w-3" /> {cfg.label}

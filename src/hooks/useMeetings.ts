@@ -2,18 +2,22 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useCampaignFilter } from '@/hooks/useCampaignFilter';
 
 export const useCreateMeeting = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { campaignId } = useCampaignFilter();
 
   return useMutation({
     mutationFn: async (meeting: { lead_id: string; scheduled_at: string; location?: string; notes?: string }) => {
       if (!user) throw new Error('Not authenticated');
+      const insertData: any = { ...meeting, created_by: user.id };
+      if (campaignId) insertData.campaign_id = campaignId;
       const { data, error } = await supabase
         .from('meetings')
-        .insert({ ...meeting, created_by: user.id })
+        .insert(insertData)
         .select()
         .single();
       if (error) throw error;

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCampaignFilter } from '@/hooks/useCampaignFilter';
 
 export interface DashboardStats {
   totalLeads: number;
@@ -14,9 +15,10 @@ export interface DashboardStats {
 
 export const useDashboardStats = () => {
   const { user, role } = useAuth();
+  const { campaignId } = useCampaignFilter();
 
   return useQuery({
-    queryKey: ['dashboard-stats', user?.id, role],
+    queryKey: ['dashboard-stats', user?.id, role, campaignId],
     queryFn: async () => {
       const now = new Date();
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -25,6 +27,7 @@ export const useDashboardStats = () => {
       const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString();
 
       let leadsQuery = supabase.from('leads').select('id, status, created_at, updated_at');
+      if (campaignId) leadsQuery = leadsQuery.eq('campaign_id', campaignId);
       if (role === 'rep' && user) {
         leadsQuery = leadsQuery.or(`created_by.eq.${user.id},assigned_rep_id.eq.${user.id}`);
       }
@@ -45,12 +48,13 @@ export const useDashboardStats = () => {
         statusBreakdown[l.status] = (statusBreakdown[l.status] || 0) + 1;
       });
 
-      // Meetings today
-      const { count: meetingsToday } = await supabase
+      let meetingsQuery = supabase
         .from('meetings')
         .select('id', { count: 'exact', head: true })
         .gte('scheduled_at', todayStart)
         .lt('scheduled_at', todayEnd);
+      if (campaignId) meetingsQuery = meetingsQuery.eq('campaign_id', campaignId);
+      const { count: meetingsToday } = await meetingsQuery;
 
       return {
         totalLeads,
@@ -76,13 +80,21 @@ export interface RepPerformance {
 }
 
 export const useTeamPerformance = () => {
+  const { campaignId } = useCampaignFilter();
+
   return useQuery({
-    queryKey: ['team-performance'],
+    queryKey: ['team-performance', campaignId],
     queryFn: async () => {
       const { data: profiles } = await supabase.from('profiles').select('user_id, full_name');
       const { data: roles } = await supabase.from('user_roles').select('user_id, role').eq('role', 'rep');
-      const { data: leads } = await supabase.from('leads').select('id, status, assigned_rep_id, created_by');
-      const { data: interactions } = await supabase.from('interaction_logs').select('id, created_by');
+
+      let leadsQuery = supabase.from('leads').select('id, status, assigned_rep_id, created_by');
+      if (campaignId) leadsQuery = leadsQuery.eq('campaign_id', campaignId);
+      const { data: leads } = await leadsQuery;
+
+      let intQuery = supabase.from('interaction_logs').select('id, created_by');
+      if (campaignId) intQuery = intQuery.eq('campaign_id', campaignId);
+      const { data: interactions } = await intQuery;
 
       const repUserIds = (roles || []).map(r => r.user_id);
       const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p.full_name]));

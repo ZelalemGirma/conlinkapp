@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useCampaignFilter } from '@/hooks/useCampaignFilter';
 import type { Database } from '@/integrations/supabase/types';
 
 type LeadRow = Database['public']['Tables']['leads']['Row'];
@@ -14,13 +15,19 @@ export const useLeads = (filters?: {
   status?: string;
   zone?: string;
 }) => {
+  const { campaignId } = useCampaignFilter();
+
   return useQuery({
-    queryKey: ['leads', filters],
+    queryKey: ['leads', filters, campaignId],
     queryFn: async () => {
       let query = supabase
         .from('leads')
         .select('*')
         .order('created_at', { ascending: false });
+
+      if (campaignId) {
+        query = query.eq('campaign_id', campaignId);
+      }
 
       if (filters?.search) {
         query = query.or(
@@ -48,13 +55,16 @@ export const useCreateLead = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { campaignId } = useCampaignFilter();
 
   return useMutation({
     mutationFn: async (lead: Omit<LeadInsert, 'created_by'>) => {
       if (!user) throw new Error('Not authenticated');
+      const insertData: any = { ...lead, created_by: user.id };
+      if (campaignId) insertData.campaign_id = campaignId;
       const { data, error } = await supabase
         .from('leads')
-        .insert({ ...lead, created_by: user.id })
+        .insert(insertData)
         .select()
         .single();
       if (error) throw error;

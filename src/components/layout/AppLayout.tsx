@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import conlinkLogoLight from '@/assets/conlink-logo-light.png';
 import { useNotifications } from '@/hooks/useNotifications';
 import NotificationBell from '@/components/layout/NotificationBell';
+import CampaignSwitcher from '@/components/campaign/CampaignSwitcher';
 import {
   Sidebar,
   SidebarContent,
@@ -48,7 +49,7 @@ const navItems: NavItem[] = [
   { title: 'Leads', icon: ClipboardList, path: '/leads', roles: ['admin', 'manager', 'rep'] },
   { title: 'Pipeline', icon: BarChart3, path: '/pipeline', roles: ['admin', 'manager', 'rep'] },
   { title: 'Map View', icon: Map, path: '/map', roles: ['admin', 'manager', 'rep'] },
-  { title: 'Targets', icon: Target, path: '/targets', roles: ['admin', 'manager'] },
+  { title: 'Targets', icon: Target, path: '/targets', roles: ['admin', 'manager', 'rep'] },
   { title: 'Reports', icon: FileBarChart, path: '/reports', roles: ['admin', 'manager', 'rep'] },
   { title: 'Leaderboard', icon: Trophy, path: '/leaderboard', roles: ['admin', 'manager', 'rep'] },
   { title: 'Team', icon: Users, path: '/team', roles: ['admin', 'manager'] },
@@ -114,6 +115,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <SidebarInset>
         <header className="flex h-14 items-center gap-4 border-b px-6">
           <SidebarTrigger />
+          <CampaignSwitcher />
           <div className="flex-1" />
           <NotificationBell
             notifications={notifications}
