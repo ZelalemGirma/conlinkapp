@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSalesTargets, useMyTargets, useCreateTarget, useUpdateTarget } from '@/hooks/useSalesTargets';
 import { useProfiles } from '@/hooks/useProfiles';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Target, Phone, Users, ClipboardList, TrendingUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
 const TARGET_TYPE_CONFIG = {
   leads: { label: 'Leads', icon: ClipboardList, color: 'bg-info/10 text-info' },
@@ -174,6 +175,37 @@ const Targets = () => {
           );
         })}
       </div>
+
+      {/* Achievement Bar Chart */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Target Achievement</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={typeSummary.map(s => ({
+              name: TARGET_TYPE_CONFIG[s.type].label,
+              Target: s.totalTarget,
+              Actual: s.totalActual,
+            }))} barGap={4}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+              <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                  color: 'hsl(var(--foreground))',
+                }}
+              />
+              <Legend />
+              <Bar dataKey="Target" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Actual" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
       {/* Table with tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
