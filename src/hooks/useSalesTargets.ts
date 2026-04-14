@@ -14,6 +14,7 @@ export const useSalesTargets = () => {
       if (error) throw error;
       return data;
     },
+    refetchInterval: 30000,
   });
 };
 
@@ -32,6 +33,7 @@ export const useMyTargets = () => {
       return data;
     },
     enabled: !!user,
+    refetchInterval: 30000,
   });
 };
 

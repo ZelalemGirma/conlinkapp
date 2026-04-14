@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLeads } from '@/hooks/useLeads';
 import { useAuth } from '@/contexts/AuthContext';
-import { LEAD_CATEGORIES, LOCATION_ZONES, LEAD_STATUS_CONFIG } from '@/types';
+import { LEAD_CATEGORIES, LOCATION_ZONES, LEAD_STATUS_CONFIG, LEAD_SOURCES } from '@/types';
 import LeadFormDialog from '@/components/leads/LeadFormDialog';
 import LeadDetailDialog from '@/components/leads/LeadDetailDialog';
 import LeadStatusBadge from '@/components/leads/LeadStatusBadge';
@@ -45,20 +45,23 @@ const Leads = () => {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [zoneFilter, setZoneFilter] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');
 
   const { data: leads, isLoading } = useLeads({
     search: search || undefined,
     category: categoryFilter || undefined,
     status: statusFilter || undefined,
     zone: zoneFilter || undefined,
+    source: sourceFilter || undefined,
   });
 
-  const hasFilters = search || categoryFilter || statusFilter || zoneFilter;
+  const hasFilters = search || categoryFilter || statusFilter || zoneFilter || sourceFilter;
   const clearFilters = () => {
     setSearch('');
     setCategoryFilter('');
     setStatusFilter('');
     setZoneFilter('');
+    setSourceFilter('');
   };
 
   return (
@@ -97,7 +100,7 @@ const Leads = () => {
       {/* Filters */}
       <Card>
         <CardContent className="pt-4 pb-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
             <div className="relative lg:col-span-2">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -131,6 +134,15 @@ const Leads = () => {
                 <SelectItem value="all">All Zones</SelectItem>
                 {LOCATION_ZONES.map(z => (
                   <SelectItem key={z} value={z}>{z}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sourceFilter} onValueChange={v => setSourceFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="Source" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sources</SelectItem>
+                {LEAD_SOURCES.map(s => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
