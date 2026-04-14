@@ -18,7 +18,6 @@ Deno.serve(async (req) => {
     const now = new Date();
     const twelveHoursLater = new Date(now.getTime() + 12 * 60 * 60 * 1000);
 
-    // Find meetings scheduled within 12 hours that haven't been reminded yet
     const { data: upcomingMeetings, error: meetingsError } = await supabase
       .from('meetings')
       .select('id, lead_id, scheduled_at, location, notes, created_by')
@@ -37,7 +36,6 @@ Deno.serve(async (req) => {
     const remindedIds: string[] = [];
 
     for (const meeting of upcomingMeetings) {
-      // Get the lead info
       const { data: lead } = await supabase
         .from('leads')
         .select('company_name, assigned_rep_id, created_by')
@@ -46,12 +44,11 @@ Deno.serve(async (req) => {
 
       if (!lead) continue;
 
-      // Determine who to notify: the meeting creator, assigned rep, and all admin/managers
+      // Determine who to notify
       const notifyUserIds = new Set<string>();
       notifyUserIds.add(meeting.created_by);
       if (lead.assigned_rep_id) notifyUserIds.add(lead.assigned_rep_id);
 
-      // Get admin and manager user IDs
       const { data: adminManagers } = await supabase
         .from('user_roles')
         .select('user_id')
@@ -59,12 +56,33 @@ Deno.serve(async (req) => {
 
       (adminManagers || []).forEach(r => notifyUserIds.add(r.user_id));
 
-      // Get user emails for email notifications
       const scheduledDate = new Date(meeting.scheduled_at);
       const timeStr = scheduledDate.toLocaleString('en-US', {
         dateStyle: 'medium',
         timeStyle: 'short',
       });
+
+      // Send email to each user who has an email
+      for (const userId of notifyUserIds) {
+        // Get user email from auth
+        const { data: userData } = await supabase.auth.admin.getUserById(userId);
+        const email = userData?.user?.email;
+        if (!email) continue;
+
+        await supabase.functions.invoke('send-transactional-email', {
+          body: {
+            templateName: 'meeting-reminder',
+            recipientEmail: email,
+            idempotencyKey: `meeting-reminder-${meeting.id}-${userId}`,
+            templateData: {
+              companyName: lead.company_name,
+              scheduledAt: timeStr,
+              location: meeting.location || undefined,
+              notes: meeting.notes || undefined,
+            },
+          },
+        });
+      }
 
       // Mark as reminded
       const { error: updateError } = await supabase
