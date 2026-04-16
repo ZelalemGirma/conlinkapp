@@ -67,6 +67,8 @@ const Leads = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [sortField, setSortField] = useState<SortField>('updated_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 25;
 
   const deleteLeads = useDeleteLeads();
 
