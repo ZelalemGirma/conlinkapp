@@ -148,7 +148,7 @@ const Leads = () => {
 
   const handleEditSelected = () => {
     if (selectedIds.size !== 1) return;
-    const lead = sortedLeads.find(l => selectedIds.has(l.id));
+    const lead = (leads || []).find(l => selectedIds.has(l.id));
     if (lead) {
       setEditLead(lead);
       setFormOpen(true);
@@ -312,14 +312,14 @@ const Leads = () => {
                       ))}
                     </TableRow>
                   ))
-                ) : sortedLeads.length === 0 ? (
+                ) : paginatedLeads.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={isAdmin ? 9 : 8} className="text-center py-12 text-muted-foreground">
                       {hasFilters ? 'No leads match your filters.' : 'No leads yet. Click "New Lead" to create one.'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  sortedLeads.map(lead => (
+                  paginatedLeads.map(lead => (
                     <TableRow key={lead.id} className="group cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedLead(lead); setDetailOpen(true); }}>
                       {isAdmin && (
                         <TableCell onClick={e => e.stopPropagation()}>
@@ -382,14 +382,14 @@ const Leads = () => {
           Array.from({ length: 5 }).map((_, i) => (
             <Card key={i}><CardContent className="p-4"><Skeleton className="h-16 w-full" /></CardContent></Card>
           ))
-        ) : sortedLeads.length === 0 ? (
+        ) : paginatedLeads.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
               {hasFilters ? 'No leads match your filters.' : 'No leads yet. Click "New Lead" to create one.'}
             </CardContent>
           </Card>
         ) : (
-          sortedLeads.map(lead => (
+          paginatedLeads.map(lead => (
             <Card
               key={lead.id}
               className="cursor-pointer hover:bg-muted/50 transition-colors"
