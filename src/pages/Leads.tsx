@@ -127,11 +127,13 @@ const Leads = () => {
   };
 
   const toggleSelectAll = () => {
-    if (!sortedLeads.length) return;
-    if (selectedIds.size === sortedLeads.length) {
-      setSelectedIds(new Set());
+    if (!paginatedLeads.length) return;
+    const pageIds = paginatedLeads.map(l => l.id);
+    const allSelected = pageIds.every(id => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds(prev => { const next = new Set(prev); pageIds.forEach(id => next.delete(id)); return next; });
     } else {
-      setSelectedIds(new Set(sortedLeads.map(l => l.id)));
+      setSelectedIds(prev => { const next = new Set(prev); pageIds.forEach(id => next.add(id)); return next; });
     }
   };
 
