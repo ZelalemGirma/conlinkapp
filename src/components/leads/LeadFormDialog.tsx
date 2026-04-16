@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCreateLead } from '@/hooks/useLeads';
+import { useCreateLead, useUpdateLead } from '@/hooks/useLeads';
 import { useDuplicateCheck } from '@/hooks/useDuplicateCheck';
 import { LEAD_CATEGORIES, LOCATION_ZONES, LEAD_SOURCES } from '@/types';
 import DuplicateWarning from '@/components/leads/DuplicateWarning';
 import CameraScanDialog from '@/components/leads/CameraScanDialog';
+import type { Database } from '@/integrations/supabase/types';
 import {
   Dialog,
   DialogContent,
