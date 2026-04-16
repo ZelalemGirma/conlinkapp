@@ -276,8 +276,9 @@ const Leads = () => {
                   {isAdmin && (
                     <TableHead className="w-10">
                       <Checkbox
-                        checked={sortedLeads.length > 0 && selectedIds.size === sortedLeads.length}
+                        checked={paginatedLeads.length > 0 && paginatedLeads.every(l => selectedIds.has(l.id))}
                         onCheckedChange={toggleSelectAll}
+                      />
                       />
                     </TableHead>
                   )}
