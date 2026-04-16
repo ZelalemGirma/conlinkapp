@@ -90,6 +90,10 @@ const Leads = () => {
     });
   }, [leads, sortField, sortDir]);
 
+  const totalPages = Math.max(1, Math.ceil(sortedLeads.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedLeads = sortedLeads.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
+
   const hasFilters = search || categoryFilter || statusFilter || zoneFilter || sourceFilter;
   const clearFilters = () => {
     setSearch('');
@@ -97,6 +101,7 @@ const Leads = () => {
     setStatusFilter('');
     setZoneFilter('');
     setSourceFilter('');
+    setCurrentPage(1);
   };
 
   const toggleSort = (field: SortField) => {
