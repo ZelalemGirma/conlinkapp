@@ -27,7 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Search, Phone, Mail, X, Download, FileText, Merge, Globe, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Pencil } from 'lucide-react';
+import { Plus, Search, Phone, Mail, X, Download, FileText, Merge, Globe, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { exportLeadsCSV, exportLeadsPDF } from '@/utils/exportLeads';
@@ -67,6 +67,8 @@ const Leads = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [sortField, setSortField] = useState<SortField>('updated_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 25;
 
   const deleteLeads = useDeleteLeads();
 
@@ -88,6 +90,10 @@ const Leads = () => {
     });
   }, [leads, sortField, sortDir]);
 
+  const totalPages = Math.max(1, Math.ceil(sortedLeads.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedLeads = sortedLeads.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
+
   const hasFilters = search || categoryFilter || statusFilter || zoneFilter || sourceFilter;
   const clearFilters = () => {
     setSearch('');
@@ -95,6 +101,7 @@ const Leads = () => {
     setStatusFilter('');
     setZoneFilter('');
     setSourceFilter('');
+    setCurrentPage(1);
   };
 
   const toggleSort = (field: SortField) => {
@@ -120,11 +127,13 @@ const Leads = () => {
   };
 
   const toggleSelectAll = () => {
-    if (!sortedLeads.length) return;
-    if (selectedIds.size === sortedLeads.length) {
-      setSelectedIds(new Set());
+    if (!paginatedLeads.length) return;
+    const pageIds = paginatedLeads.map(l => l.id);
+    const allSelected = pageIds.every(id => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds(prev => { const next = new Set(prev); pageIds.forEach(id => next.delete(id)); return next; });
     } else {
-      setSelectedIds(new Set(sortedLeads.map(l => l.id)));
+      setSelectedIds(prev => { const next = new Set(prev); pageIds.forEach(id => next.add(id)); return next; });
     }
   };
 
@@ -139,7 +148,7 @@ const Leads = () => {
 
   const handleEditSelected = () => {
     if (selectedIds.size !== 1) return;
-    const lead = sortedLeads.find(l => selectedIds.has(l.id));
+    const lead = (leads || []).find(l => selectedIds.has(l.id));
     if (lead) {
       setEditLead(lead);
       setFormOpen(true);
@@ -208,11 +217,11 @@ const Leads = () => {
               <Input
                 placeholder="Search company, contact, phone..."
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                 className="pl-9"
               />
             </div>
-            <Select value={categoryFilter} onValueChange={v => setCategoryFilter(v === 'all' ? '' : v)}>
+            <Select value={categoryFilter} onValueChange={v => { setCategoryFilter(v === 'all' ? '' : v); setCurrentPage(1); }}>
               <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
@@ -221,7 +230,7 @@ const Leads = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={statusFilter} onValueChange={v => setStatusFilter(v === 'all' ? '' : v)}>
+            <Select value={statusFilter} onValueChange={v => { setStatusFilter(v === 'all' ? '' : v); setCurrentPage(1); }}>
               <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
@@ -230,7 +239,7 @@ const Leads = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={zoneFilter} onValueChange={v => setZoneFilter(v === 'all' ? '' : v)}>
+            <Select value={zoneFilter} onValueChange={v => { setZoneFilter(v === 'all' ? '' : v); setCurrentPage(1); }}>
               <SelectTrigger><SelectValue placeholder="Zone" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Zones</SelectItem>
@@ -239,7 +248,7 @@ const Leads = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={sourceFilter} onValueChange={v => setSourceFilter(v === 'all' ? '' : v)}>
+            <Select value={sourceFilter} onValueChange={v => { setSourceFilter(v === 'all' ? '' : v); setCurrentPage(1); }}>
               <SelectTrigger><SelectValue placeholder="Source" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Sources</SelectItem>
@@ -267,7 +276,7 @@ const Leads = () => {
                   {isAdmin && (
                     <TableHead className="w-10">
                       <Checkbox
-                        checked={sortedLeads.length > 0 && selectedIds.size === sortedLeads.length}
+                        checked={paginatedLeads.length > 0 && paginatedLeads.every(l => selectedIds.has(l.id))}
                         onCheckedChange={toggleSelectAll}
                       />
                     </TableHead>
@@ -303,14 +312,14 @@ const Leads = () => {
                       ))}
                     </TableRow>
                   ))
-                ) : sortedLeads.length === 0 ? (
+                ) : paginatedLeads.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={isAdmin ? 9 : 8} className="text-center py-12 text-muted-foreground">
                       {hasFilters ? 'No leads match your filters.' : 'No leads yet. Click "New Lead" to create one.'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  sortedLeads.map(lead => (
+                  paginatedLeads.map(lead => (
                     <TableRow key={lead.id} className="group cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedLead(lead); setDetailOpen(true); }}>
                       {isAdmin && (
                         <TableCell onClick={e => e.stopPropagation()}>
@@ -373,14 +382,14 @@ const Leads = () => {
           Array.from({ length: 5 }).map((_, i) => (
             <Card key={i}><CardContent className="p-4"><Skeleton className="h-16 w-full" /></CardContent></Card>
           ))
-        ) : sortedLeads.length === 0 ? (
+        ) : paginatedLeads.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
               {hasFilters ? 'No leads match your filters.' : 'No leads yet. Click "New Lead" to create one.'}
             </CardContent>
           </Card>
         ) : (
-          sortedLeads.map(lead => (
+          paginatedLeads.map(lead => (
             <Card
               key={lead.id}
               className="cursor-pointer hover:bg-muted/50 transition-colors"
@@ -426,6 +435,39 @@ const Leads = () => {
           ))
         )}
       </div>
+
+      {/* Pagination */}
+      {sortedLeads.length > pageSize && (
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <span className="text-sm text-muted-foreground">
+            Showing {(safeCurrentPage - 1) * pageSize + 1}–{Math.min(safeCurrentPage * pageSize, sortedLeads.length)} of {sortedLeads.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" disabled={safeCurrentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - safeCurrentPage) <= 1)
+              .reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
+                if (idx > 0 && p - (arr[idx - 1]) > 1) acc.push('ellipsis');
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((item, idx) =>
+                item === 'ellipsis' ? (
+                  <span key={`e${idx}`} className="px-2 text-muted-foreground">…</span>
+                ) : (
+                  <Button key={item} variant={item === safeCurrentPage ? 'default' : 'outline'} size="sm" className="w-9" onClick={() => setCurrentPage(item as number)}>
+                    {item}
+                  </Button>
+                )
+              )}
+            <Button variant="outline" size="sm" disabled={safeCurrentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Vetting Queue - admin/manager only */}
       {isManagerOrAdmin && <VettingQueue />}
