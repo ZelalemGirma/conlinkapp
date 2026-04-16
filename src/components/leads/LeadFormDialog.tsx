@@ -446,8 +446,8 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange, edi
                   <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={createLead.isPending}>
-                    {createLead.isPending ? 'Submitting...' : 'Submit Lead'}
+                  <Button type="submit" disabled={isPending}>
+                    {isPending ? 'Saving...' : isEditing ? 'Save Changes' : 'Submit Lead'}
                   </Button>
                 </div>
               </form>
