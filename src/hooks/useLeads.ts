@@ -108,3 +108,25 @@ export const useUpdateLead = () => {
     },
   });
 };
+
+export const useDeleteLeads = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      toast({ title: `${ids.length} lead(s) deleted` });
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Failed to delete leads', description: err.message, variant: 'destructive' });
+    },
+  });
+};

@@ -56,6 +56,7 @@ type LeadFormValues = z.infer<typeof leadFormSchema>;
 interface LeadFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editLead?: Database['public']['Tables']['leads']['Row'] | null;
 }
 
 const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) => {
