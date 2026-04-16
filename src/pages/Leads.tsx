@@ -217,11 +217,11 @@ const Leads = () => {
               <Input
                 placeholder="Search company, contact, phone..."
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                 className="pl-9"
               />
             </div>
-            <Select value={categoryFilter} onValueChange={v => setCategoryFilter(v === 'all' ? '' : v)}>
+            <Select value={categoryFilter} onValueChange={v => { setCategoryFilter(v === 'all' ? '' : v); setCurrentPage(1); }}>
               <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
@@ -230,7 +230,7 @@ const Leads = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={statusFilter} onValueChange={v => setStatusFilter(v === 'all' ? '' : v)}>
+            <Select value={statusFilter} onValueChange={v => { setStatusFilter(v === 'all' ? '' : v); setCurrentPage(1); }}>
               <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
@@ -239,7 +239,7 @@ const Leads = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={zoneFilter} onValueChange={v => setZoneFilter(v === 'all' ? '' : v)}>
+            <Select value={zoneFilter} onValueChange={v => { setZoneFilter(v === 'all' ? '' : v); setCurrentPage(1); }}>
               <SelectTrigger><SelectValue placeholder="Zone" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Zones</SelectItem>
@@ -248,7 +248,7 @@ const Leads = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={sourceFilter} onValueChange={v => setSourceFilter(v === 'all' ? '' : v)}>
+            <Select value={sourceFilter} onValueChange={v => { setSourceFilter(v === 'all' ? '' : v); setCurrentPage(1); }}>
               <SelectTrigger><SelectValue placeholder="Source" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Sources</SelectItem>
