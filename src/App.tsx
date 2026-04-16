@@ -66,6 +66,7 @@ const App = () => (
               <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
               <Route path="/manual" element={<ProtectedRoute><UserManual /></ProtectedRoute>} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </CampaignProvider>
