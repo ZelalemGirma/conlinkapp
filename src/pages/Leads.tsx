@@ -436,6 +436,39 @@ const Leads = () => {
         )}
       </div>
 
+      {/* Pagination */}
+      {sortedLeads.length > pageSize && (
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <span className="text-sm text-muted-foreground">
+            Showing {(safeCurrentPage - 1) * pageSize + 1}–{Math.min(safeCurrentPage * pageSize, sortedLeads.length)} of {sortedLeads.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" disabled={safeCurrentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - safeCurrentPage) <= 1)
+              .reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
+                if (idx > 0 && p - (arr[idx - 1]) > 1) acc.push('ellipsis');
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((item, idx) =>
+                item === 'ellipsis' ? (
+                  <span key={`e${idx}`} className="px-2 text-muted-foreground">…</span>
+                ) : (
+                  <Button key={item} variant={item === safeCurrentPage ? 'default' : 'outline'} size="sm" className="w-9" onClick={() => setCurrentPage(item as number)}>
+                    {item}
+                  </Button>
+                )
+              )}
+            <Button variant="outline" size="sm" disabled={safeCurrentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Vetting Queue - admin/manager only */}
       {isManagerOrAdmin && <VettingQueue />}
 
