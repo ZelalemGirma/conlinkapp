@@ -27,7 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Search, Phone, Mail, X, Download, FileText, Merge, Globe, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Pencil } from 'lucide-react';
+import { Plus, Search, Phone, Mail, X, Download, FileText, Merge, Globe, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { exportLeadsCSV, exportLeadsPDF } from '@/utils/exportLeads';
