@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCreateLead } from '@/hooks/useLeads';
+import { useCreateLead, useUpdateLead } from '@/hooks/useLeads';
 import { useDuplicateCheck } from '@/hooks/useDuplicateCheck';
 import { LEAD_CATEGORIES, LOCATION_ZONES, LEAD_SOURCES } from '@/types';
 import DuplicateWarning from '@/components/leads/DuplicateWarning';
 import CameraScanDialog from '@/components/leads/CameraScanDialog';
+import type { Database } from '@/integrations/supabase/types';
 import {
   Dialog,
   DialogContent,
@@ -56,13 +57,16 @@ type LeadFormValues = z.infer<typeof leadFormSchema>;
 interface LeadFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editLead?: Database['public']['Tables']['leads']['Row'] | null;
 }
 
-const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) => {
+const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange, editLead }) => {
   const createLead = useCreateLead();
+  const updateLead = useUpdateLead();
   const [capturingLocation, setCapturingLocation] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [showOtherSource, setShowOtherSource] = useState(false);
+  const isEditing = !!editLead;
 
   const form = useForm<LeadFormValues>({
     resolver: zodResolver(leadFormSchema),
@@ -80,6 +84,36 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
     },
   });
 
+  // Populate form when editing
+  useEffect(() => {
+    if (editLead && open) {
+      const extraPhones = (editLead.phone_numbers || [])
+        .filter((p: string) => p !== editLead.phone)
+        .map((value: string) => ({ value }));
+      form.reset({
+        company_name: editLead.company_name || '',
+        contact_person: editLead.contact_person || '',
+        position: editLead.position || '',
+        phone: editLead.phone || '',
+        extra_phones: extraPhones,
+        email: editLead.email || '',
+        category: editLead.category as any,
+        source: editLead.source || '',
+        specific_address: editLead.specific_address || '',
+        location_zone: editLead.location_zone || '',
+        gps_lat: editLead.gps_lat ?? undefined,
+        gps_lng: editLead.gps_lng ?? undefined,
+        campaign_tag: editLead.campaign_tag || '',
+      });
+      if (editLead.source && !LEAD_SOURCES.includes(editLead.source as any)) {
+        setShowOtherSource(true);
+      }
+    } else if (!open) {
+      form.reset();
+      setShowOtherSource(false);
+    }
+  }, [editLead, open]);
+
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'extra_phones',
@@ -87,7 +121,7 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
 
   const watchedCompany = useWatch({ control: form.control, name: 'company_name' }) || '';
   const watchedPhone = useWatch({ control: form.control, name: 'phone' }) || '';
-  const { data: duplicates } = useDuplicateCheck(watchedCompany, watchedPhone);
+  const { data: duplicates } = useDuplicateCheck(watchedCompany, watchedPhone, editLead?.id);
 
   const captureLocation = () => {
     if (!navigator.geolocation) {
@@ -119,7 +153,7 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
 
   const onSubmit = async (values: LeadFormValues) => {
     const phoneNumbers = [values.phone, ...values.extra_phones.map(p => p.value)].filter(Boolean) as string[];
-    await createLead.mutateAsync({
+    const payload = {
       company_name: values.company_name,
       contact_person: values.contact_person || '',
       position: values.position || '',
@@ -133,11 +167,18 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
       gps_lng: typeof values.gps_lng === 'number' ? values.gps_lng : null,
       campaign_tag: values.campaign_tag || '',
       phone_numbers: phoneNumbers,
-      status: 'draft',
-    });
+    };
+
+    if (isEditing) {
+      await updateLead.mutateAsync({ id: editLead.id, ...payload });
+    } else {
+      await createLead.mutateAsync({ ...payload, status: 'draft' });
+    }
     form.reset();
     onOpenChange(false);
   };
+
+  const isPending = isEditing ? updateLead.isPending : createLead.isPending;
 
   const canAddPhone = fields.length < 4;
 
@@ -147,10 +188,12 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
         <DialogContent className="max-w-2xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="text-secondary flex items-center justify-between">
-              <span>New Lead Proposal</span>
-              <Button type="button" variant="outline" size="sm" onClick={() => setScanOpen(true)} className="gap-1.5">
-                <Camera className="h-4 w-4" /> Scan Card
-              </Button>
+              <span>{isEditing ? 'Edit Lead' : 'New Lead Proposal'}</span>
+              {!isEditing && (
+                <Button type="button" variant="outline" size="sm" onClick={() => setScanOpen(true)} className="gap-1.5">
+                  <Camera className="h-4 w-4" /> Scan Card
+                </Button>
+              )}
             </DialogTitle>
           </DialogHeader>
           <ScrollArea className="max-h-[70vh] pr-4">
@@ -403,8 +446,8 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onOpenChange }) =
                   <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={createLead.isPending}>
-                    {createLead.isPending ? 'Submitting...' : 'Submit Lead'}
+                  <Button type="submit" disabled={isPending}>
+                    {isPending ? 'Saving...' : isEditing ? 'Save Changes' : 'Submit Lead'}
                   </Button>
                 </div>
               </form>
