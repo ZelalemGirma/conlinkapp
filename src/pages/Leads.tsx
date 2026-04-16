@@ -279,7 +279,6 @@ const Leads = () => {
                         checked={paginatedLeads.length > 0 && paginatedLeads.every(l => selectedIds.has(l.id))}
                         onCheckedChange={toggleSelectAll}
                       />
-                      />
                     </TableHead>
                   )}
                   <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('company_name')}>
