@@ -17,9 +17,10 @@ export const useLeads = (filters?: {
   source?: string;
 }) => {
   const { campaignId } = useCampaignFilter();
+  const { user, role } = useAuth();
 
   return useQuery({
-    queryKey: ['leads', filters, campaignId],
+    queryKey: ['leads', filters, campaignId, user?.id, role],
     queryFn: async () => {
       let query = supabase
         .from('leads')
@@ -28,6 +29,11 @@ export const useLeads = (filters?: {
 
       if (campaignId) {
         query = query.eq('campaign_id', campaignId);
+      }
+
+      // Reps only see their own leads (created by them or assigned to them)
+      if (role === 'rep' && user) {
+        query = query.or(`created_by.eq.${user.id},assigned_rep_id.eq.${user.id}`);
       }
 
       if (filters?.search) {
