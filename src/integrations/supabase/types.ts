@@ -648,6 +648,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_view_lead: { Args: { _lead_id: string }; Returns: boolean }
       check_lead_duplicates: {
         Args: { _company_name?: string; _exclude_id?: string; _phone?: string }
         Returns: {
