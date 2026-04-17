@@ -54,6 +54,9 @@ export const useDashboardStats = () => {
         .gte('scheduled_at', todayStart)
         .lt('scheduled_at', todayEnd);
       if (campaignId) meetingsQuery = meetingsQuery.eq('campaign_id', campaignId);
+      if (role === 'rep' && user) {
+        meetingsQuery = meetingsQuery.eq('created_by', user.id);
+      }
       const { count: meetingsToday } = await meetingsQuery;
 
       return {
