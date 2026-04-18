@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useLeads, useDeleteLeads } from '@/hooks/useLeads';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfiles } from '@/hooks/useProfiles';
 import { LEAD_CATEGORIES, LOCATION_ZONES, LEAD_STATUS_CONFIG, LEAD_SOURCES } from '@/types';
 import LeadFormDialog from '@/components/leads/LeadFormDialog';
 import LeadDetailDialog from '@/components/leads/LeadDetailDialog';
@@ -52,6 +53,7 @@ const Leads = () => {
   const { role } = useAuth();
   const isAdmin = role === 'admin';
   const isManagerOrAdmin = role === 'admin' || role === 'manager';
+  const { data: profiles } = useProfiles();
   const [formOpen, setFormOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
   const [fetchOpen, setFetchOpen] = useState(false);
@@ -71,6 +73,13 @@ const Leads = () => {
   const pageSize = 25;
 
   const deleteLeads = useDeleteLeads();
+
+  const profileMap = useMemo(
+    () => Object.fromEntries((profiles ?? []).map(profile => [profile.user_id, profile.full_name || 'Unknown'])),
+    [profiles]
+  );
+
+  const getLeadOwnerName = (lead: LeadRow) => profileMap[lead.assigned_rep_id || lead.created_by] || 'Unknown';
 
   const { data: leads, isLoading } = useLeads({
     search: search || undefined,
@@ -300,6 +309,7 @@ const Leads = () => {
                   <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('campaign_tag')}>
                     <span className="inline-flex items-center">Campaign <SortIcon field="campaign_tag" /></span>
                   </TableHead>
+                  {isManagerOrAdmin && <TableHead>Owner</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -307,14 +317,14 @@ const Leads = () => {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: isAdmin ? 9 : 8 }).map((_, j) => (
+                      {Array.from({ length: isManagerOrAdmin ? (isAdmin ? 10 : 9) : (isAdmin ? 9 : 8) }).map((_, j) => (
                         <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : paginatedLeads.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={isAdmin ? 9 : 8} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={isManagerOrAdmin ? (isAdmin ? 10 : 9) : (isAdmin ? 9 : 8)} className="text-center py-12 text-muted-foreground">
                       {hasFilters ? 'No leads match your filters.' : 'No leads yet. Click "New Lead" to create one.'}
                     </TableCell>
                   </TableRow>
@@ -357,6 +367,7 @@ const Leads = () => {
                       <TableCell><LeadStatusBadge status={lead.status} /></TableCell>
                       <TableCell><LeadHealthIndicator updatedAt={lead.updated_at} status={lead.status} /></TableCell>
                       <TableCell><span className="text-xs text-muted-foreground">{lead.campaign_tag || '—'}</span></TableCell>
+                      {isManagerOrAdmin && <TableCell><span className="text-sm">{getLeadOwnerName(lead)}</span></TableCell>}
                       <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
                           {isAdmin && (
@@ -418,6 +429,11 @@ const Leads = () => {
                   {lead.location_zone && <span className="text-muted-foreground">• {lead.location_zone}</span>}
                   <LeadHealthIndicator updatedAt={lead.updated_at} status={lead.status} />
                 </div>
+                {isManagerOrAdmin && (
+                  <div className="text-xs text-muted-foreground">
+                    Owner: {getLeadOwnerName(lead)}
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center gap-3 text-xs">
                   {lead.phone && (
                     <a href={`tel:${lead.phone}`} onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 text-primary hover:underline">
