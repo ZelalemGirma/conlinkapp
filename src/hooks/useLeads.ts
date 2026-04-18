@@ -17,11 +17,14 @@ export const useLeads = (filters?: {
   source?: string;
 }) => {
   const { campaignId } = useCampaignFilter();
-  const { user, role } = useAuth();
+  const { user, role, loading } = useAuth();
+  const canSeeAllLeads = role === 'admin' || role === 'manager';
 
   return useQuery({
     queryKey: ['leads', filters, campaignId, user?.id, role],
     queryFn: async () => {
+      if (!user) return [] as LeadRow[];
+
       let query = supabase
         .from('leads')
         .select('*')
@@ -31,16 +34,11 @@ export const useLeads = (filters?: {
         query = query.eq('campaign_id', campaignId);
       }
 
-      // Reps only see their own leads (created by them or assigned to them)
-      if (role === 'rep' && user) {
+      // Secure default: until elevated roles are known, only return owned leads.
+      if (!canSeeAllLeads) {
         query = query.or(`created_by.eq.${user.id},assigned_rep_id.eq.${user.id}`);
       }
 
-      if (filters?.search) {
-        query = query.or(
-          `company_name.ilike.%${filters.search}%,contact_person.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,email.ilike.%${filters.search}%`
-        );
-      }
       if (filters?.category) {
         query = query.eq('category', filters.category as any);
       }
@@ -56,8 +54,27 @@ export const useLeads = (filters?: {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as LeadRow[];
+
+      let leads = (data as LeadRow[]) ?? [];
+
+      if (!canSeeAllLeads) {
+        leads = leads.filter(
+          (lead) => lead.created_by === user.id || lead.assigned_rep_id === user.id
+        );
+      }
+
+      if (filters?.search) {
+        const search = filters.search.trim().toLowerCase();
+        leads = leads.filter((lead) =>
+          [lead.company_name, lead.contact_person, lead.phone, lead.email]
+            .filter(Boolean)
+            .some((value) => value!.toLowerCase().includes(search))
+        );
+      }
+
+      return leads;
     },
+    enabled: !!user && !loading,
   });
 };
 
