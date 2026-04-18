@@ -264,7 +264,7 @@ const Reports: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Global Reports</h1>
+          <h1 className="text-2xl font-bold text-foreground">{isRepOnly ? 'My Reports' : 'Global Reports'}</h1>
           <p className="text-sm text-muted-foreground">
             {isRepOnly ? 'Your personal lead analytics' : 'Team-wide lead analytics & reporting'}
           </p>
