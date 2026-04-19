@@ -44,15 +44,24 @@ const Reports: React.FC = () => {
   const [selectedZones, setSelectedZones] = useState<string[]>([]);
   const [campaignFilter, setCampaignFilter] = useState('');
 
-  // Fetch all leads
-  const { data: allLeads = [], isLoading: leadsLoading } = useQuery({
-    queryKey: ['reports-leads'],
+  // Fetch all leads (RLS scopes to permitted rows; reps further filtered below)
+  const { data: allLeadsRaw = [], isLoading: leadsLoading } = useQuery({
+    queryKey: ['reports-leads', user?.id, role],
     queryFn: async () => {
       const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
       if (error) throw error;
       return data as LeadRow[];
     },
   });
+
+  const allLeads = useMemo(() => {
+    if (!isRepOnly || !user) return allLeadsRaw;
+    return allLeadsRaw.filter(
+      (l) =>
+        l.created_by === user.id ||
+        (l.assigned_rep_id === user.id && l.status !== 'draft' && l.status !== 'pending')
+    );
+  }, [allLeadsRaw, isRepOnly, user]);
 
   // Fetch all interactions
   const { data: allInteractions = [], isLoading: interactionsLoading } = useQuery({
