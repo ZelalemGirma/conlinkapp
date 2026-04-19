@@ -61,7 +61,11 @@ export const useLeads = (filters?: {
 
       if (!canSeeAllLeads) {
         leads = leads.filter(
-          (lead) => lead.created_by === user.id || lead.assigned_rep_id === user.id
+          (lead) =>
+            lead.created_by === user.id ||
+            (lead.assigned_rep_id === user.id &&
+              lead.status !== 'draft' &&
+              lead.status !== 'pending')
         );
       }
 
