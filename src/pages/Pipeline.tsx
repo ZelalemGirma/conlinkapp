@@ -147,6 +147,12 @@ const Pipeline = () => {
                                   🏷️ {lead.campaign_tag}
                                 </div>
                               )}
+                              {canSeeOwner && (
+                                <div className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+                                  <User className="h-3 w-3" />
+                                  {profileMap[lead.assigned_rep_id || lead.created_by] || 'Unknown'}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
