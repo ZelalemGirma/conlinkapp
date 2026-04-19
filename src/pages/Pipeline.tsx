@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLeads, useUpdateLead } from '@/hooks/useLeads';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfiles } from '@/hooks/useProfiles';
 import { LEAD_STATUS_CONFIG } from '@/types';
 import type { LeadStatus } from '@/types';
 import LeadStatusBadge from '@/components/leads/LeadStatusBadge';
@@ -8,7 +9,7 @@ import LeadDetailDialog from '@/components/leads/LeadDetailDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Building2, GripVertical } from 'lucide-react';
+import { Phone, Building2, GripVertical, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
