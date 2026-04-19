@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLeads, useUpdateLead } from '@/hooks/useLeads';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfiles } from '@/hooks/useProfiles';
 import { LEAD_STATUS_CONFIG } from '@/types';
 import type { LeadStatus } from '@/types';
 import LeadStatusBadge from '@/components/leads/LeadStatusBadge';
@@ -8,7 +9,7 @@ import LeadDetailDialog from '@/components/leads/LeadDetailDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Building2, GripVertical } from 'lucide-react';
+import { Phone, Building2, GripVertical, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -26,6 +27,13 @@ const PIPELINE_COLUMNS: { status: LeadStatus; label: string }[] = [
 
 const Pipeline = () => {
   const { data: leads, isLoading } = useLeads();
+  const { role } = useAuth();
+  const { data: profiles } = useProfiles();
+  const canSeeOwner = role === 'admin' || role === 'manager';
+  const profileMap = useMemo(
+    () => Object.fromEntries((profiles ?? []).map(p => [p.user_id, p.full_name || 'Unknown'])),
+    [profiles]
+  );
   const updateLead = useUpdateLead();
   const [selectedLead, setSelectedLead] = useState<LeadRow | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -137,6 +145,12 @@ const Pipeline = () => {
                               {lead.campaign_tag && (
                                 <div className="text-[10px] text-primary/70 mt-1">
                                   🏷️ {lead.campaign_tag}
+                                </div>
+                              )}
+                              {canSeeOwner && (
+                                <div className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+                                  <User className="h-3 w-3" />
+                                  {profileMap[lead.assigned_rep_id || lead.created_by] || 'Unknown'}
                                 </div>
                               )}
                             </div>
