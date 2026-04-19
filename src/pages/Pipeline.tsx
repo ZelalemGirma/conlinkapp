@@ -27,6 +27,13 @@ const PIPELINE_COLUMNS: { status: LeadStatus; label: string }[] = [
 
 const Pipeline = () => {
   const { data: leads, isLoading } = useLeads();
+  const { role } = useAuth();
+  const { data: profiles } = useProfiles();
+  const canSeeOwner = role === 'admin' || role === 'manager';
+  const profileMap = useMemo(
+    () => Object.fromEntries((profiles ?? []).map(p => [p.user_id, p.full_name || 'Unknown'])),
+    [profiles]
+  );
   const updateLead = useUpdateLead();
   const [selectedLead, setSelectedLead] = useState<LeadRow | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
