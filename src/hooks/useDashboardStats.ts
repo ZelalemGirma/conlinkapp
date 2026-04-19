@@ -26,14 +26,24 @@ export const useDashboardStats = () => {
       const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
       const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString();
 
-      let leadsQuery = supabase.from('leads').select('id, status, created_at, updated_at');
+      const isRep = role !== 'admin' && role !== 'manager';
+      let leadsQuery = supabase.from('leads').select('id, status, created_at, updated_at, created_by, assigned_rep_id');
       if (campaignId) leadsQuery = leadsQuery.eq('campaign_id', campaignId);
-      if (role === 'rep' && user) {
-        leadsQuery = leadsQuery.or(`created_by.eq.${user.id},assigned_rep_id.eq.${user.id}`);
+      if (isRep && user) {
+        leadsQuery = leadsQuery.or(
+          `created_by.eq.${user.id},and(assigned_rep_id.eq.${user.id},status.not.in.(draft,pending))`
+        );
       }
       const { data: leads } = await leadsQuery;
 
-      const allLeads = leads || [];
+      let allLeads = leads || [];
+      if (isRep && user) {
+        allLeads = allLeads.filter(
+          (l: any) =>
+            l.created_by === user.id ||
+            (l.assigned_rep_id === user.id && l.status !== 'draft' && l.status !== 'pending')
+        );
+      }
       const totalLeads = allLeads.length;
       const dealsClosed = allLeads.filter(l => l.status === 'deal_closed').length;
       const leadsThisWeek = allLeads.filter(l => new Date(l.created_at) >= weekAgo).length;
