@@ -34,9 +34,11 @@ export const useLeads = (filters?: {
         query = query.eq('campaign_id', campaignId);
       }
 
-      // Secure default: until elevated roles are known, only return owned leads.
+      // Reps see: leads they created, OR leads assigned to them that are past draft/pending.
       if (!canSeeAllLeads) {
-        query = query.or(`created_by.eq.${user.id},assigned_rep_id.eq.${user.id}`);
+        query = query.or(
+          `created_by.eq.${user.id},and(assigned_rep_id.eq.${user.id},status.not.in.(draft,pending))`
+        );
       }
 
       if (filters?.category) {
@@ -59,7 +61,11 @@ export const useLeads = (filters?: {
 
       if (!canSeeAllLeads) {
         leads = leads.filter(
-          (lead) => lead.created_by === user.id || lead.assigned_rep_id === user.id
+          (lead) =>
+            lead.created_by === user.id ||
+            (lead.assigned_rep_id === user.id &&
+              lead.status !== 'draft' &&
+              lead.status !== 'pending')
         );
       }
 
