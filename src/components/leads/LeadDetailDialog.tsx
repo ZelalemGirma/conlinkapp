@@ -37,6 +37,7 @@ import {
   Clock,
   Calendar,
   Globe,
+  Pencil,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,9 +56,10 @@ interface LeadDetailDialogProps {
   lead: LeadRow | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEdit?: (lead: LeadRow) => void;
 }
 
-const LeadDetailDialog: React.FC<LeadDetailDialogProps> = ({ lead, open, onOpenChange }) => {
+const LeadDetailDialog: React.FC<LeadDetailDialogProps> = ({ lead, open, onOpenChange, onEdit }) => {
   const { role, user } = useAuth();
   const updateLead = useUpdateLead();
   const { data: reps } = useReps();
@@ -89,6 +91,7 @@ const LeadDetailDialog: React.FC<LeadDetailDialogProps> = ({ lead, open, onOpenC
   const canUpdateStatus = !isDraft && !isPending && (
     lead.assigned_rep_id === user?.id || lead.created_by === user?.id || role === 'admin' || role === 'manager'
   );
+  const canEdit = role === 'admin' || role === 'manager' || lead.created_by === user?.id || lead.assigned_rep_id === user?.id;
 
   const phoneNumbers: string[] = (lead as any).phone_numbers?.length
     ? (lead as any).phone_numbers
@@ -137,9 +140,16 @@ const LeadDetailDialog: React.FC<LeadDetailDialogProps> = ({ lead, open, onOpenC
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-lg max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle className="text-secondary flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              {lead.company_name}
+            <DialogTitle className="text-secondary flex items-center justify-between gap-2 pr-6">
+              <span className="flex items-center gap-2 min-w-0">
+                <Building2 className="h-5 w-5 shrink-0" />
+                <span className="truncate">{lead.company_name}</span>
+              </span>
+              {canEdit && onEdit && (
+                <Button variant="outline" size="sm" onClick={() => onEdit(lead)} className="gap-1.5 shrink-0">
+                  <Pencil className="h-3.5 w-3.5" /> Edit
+                </Button>
+              )}
             </DialogTitle>
           </DialogHeader>
           <ScrollArea className="max-h-[70vh] pr-4">
