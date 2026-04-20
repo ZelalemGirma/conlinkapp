@@ -50,9 +50,12 @@ type SortField = 'company_name' | 'contact_person' | 'category' | 'location_zone
 type SortDir = 'asc' | 'desc';
 
 const Leads = () => {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const isAdmin = role === 'admin';
   const isManagerOrAdmin = role === 'admin' || role === 'manager';
+  const canEditLead = (lead: LeadRow) =>
+    isManagerOrAdmin || lead.created_by === user?.id || lead.assigned_rep_id === user?.id;
+  const openEdit = (lead: LeadRow) => { setEditLead(lead); setFormOpen(true); };
   const { data: profiles } = useProfiles();
   const [formOpen, setFormOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
@@ -370,8 +373,8 @@ const Leads = () => {
                       {isManagerOrAdmin && <TableCell><span className="text-sm">{getLeadOwnerName(lead)}</span></TableCell>}
                       <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
-                          {isAdmin && (
-                            <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setEditLead(lead); setFormOpen(true); }}>
+                          {canEditLead(lead) && (
+                            <Button variant="ghost" size="sm" className="text-xs" onClick={() => openEdit(lead)} title="Edit lead">
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                           )}
@@ -422,7 +425,20 @@ const Leads = () => {
                       {lead.contact_person && <div className="text-sm text-muted-foreground">{lead.contact_person}</div>}
                     </div>
                   </div>
-                  <LeadStatusBadge status={lead.status} />
+                  <div className="flex items-center gap-1 shrink-0">
+                    {canEditLead(lead) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={e => { e.stopPropagation(); openEdit(lead); }}
+                        title="Edit lead"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    <LeadStatusBadge status={lead.status} />
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span className="text-muted-foreground">{lead.category}</span>
@@ -489,7 +505,12 @@ const Leads = () => {
       {isManagerOrAdmin && <VettingQueue />}
 
       <LeadFormDialog open={formOpen} onOpenChange={setFormOpen} editLead={editLead} />
-      <LeadDetailDialog lead={selectedLead} open={detailOpen} onOpenChange={setDetailOpen} />
+      <LeadDetailDialog
+        lead={selectedLead}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onEdit={(lead) => { setDetailOpen(false); openEdit(lead); }}
+      />
       <MergeLeadsDialog open={mergeOpen} onOpenChange={setMergeOpen} />
       <FetchLeadsDialog open={fetchOpen} onOpenChange={setFetchOpen} />
 
