@@ -68,7 +68,6 @@ const Leads = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [zoneFilter, setZoneFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
-  const [repFilter, setRepFilter] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [sortField, setSortField] = useState<SortField>('updated_at');
@@ -93,33 +92,27 @@ const Leads = () => {
     source: sourceFilter || undefined,
   });
 
-  const filteredByRep = useMemo(() => {
-    if (!leads) return [];
-    if (!isManagerOrAdmin || !repFilter) return leads;
-    return leads.filter(l => (l.assigned_rep_id || l.created_by) === repFilter);
-  }, [leads, repFilter, isManagerOrAdmin]);
-
   const sortedLeads = useMemo(() => {
-    return [...filteredByRep].sort((a, b) => {
+    if (!leads) return [];
+    return [...leads].sort((a, b) => {
       const av = (a[sortField] ?? '') as string;
       const bv = (b[sortField] ?? '') as string;
       const cmp = av.localeCompare(bv, undefined, { sensitivity: 'base' });
       return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [filteredByRep, sortField, sortDir]);
+  }, [leads, sortField, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(sortedLeads.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedLeads = sortedLeads.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
 
-  const hasFilters = search || categoryFilter || statusFilter || zoneFilter || sourceFilter || repFilter;
+  const hasFilters = search || categoryFilter || statusFilter || zoneFilter || sourceFilter;
   const clearFilters = () => {
     setSearch('');
     setCategoryFilter('');
     setStatusFilter('');
     setZoneFilter('');
     setSourceFilter('');
-    setRepFilter('');
     setCurrentPage(1);
   };
 
@@ -276,22 +269,6 @@ const Leads = () => {
                 ))}
               </SelectContent>
             </Select>
-            {isManagerOrAdmin && (
-              <Select value={repFilter} onValueChange={v => { setRepFilter(v === 'all' ? '' : v); setCurrentPage(1); }}>
-                <SelectTrigger><SelectValue placeholder="Rep / Owner" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Reps</SelectItem>
-                  {(profiles ?? [])
-                    .slice()
-                    .sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''))
-                    .map(p => (
-                      <SelectItem key={p.user_id} value={p.user_id}>
-                        {p.full_name || 'Unknown'}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            )}
           </div>
           {hasFilters && (
             <Button variant="ghost" size="sm" className="mt-2 text-xs" onClick={clearFilters}>
