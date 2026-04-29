@@ -68,6 +68,7 @@ const Leads = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [zoneFilter, setZoneFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
+  const [repFilter, setRepFilter] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [sortField, setSortField] = useState<SortField>('updated_at');
