@@ -91,6 +91,7 @@ const Leads = () => {
     status: statusFilter || undefined,
     zone: zoneFilter || undefined,
     source: sourceFilter || undefined,
+    repId: (isManagerOrAdmin && repFilter) ? repFilter : undefined,
   });
 
   const sortedLeads = useMemo(() => {
