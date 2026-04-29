@@ -108,13 +108,14 @@ const Leads = () => {
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedLeads = sortedLeads.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
 
-  const hasFilters = search || categoryFilter || statusFilter || zoneFilter || sourceFilter;
+  const hasFilters = search || categoryFilter || statusFilter || zoneFilter || sourceFilter || repFilter;
   const clearFilters = () => {
     setSearch('');
     setCategoryFilter('');
     setStatusFilter('');
     setZoneFilter('');
     setSourceFilter('');
+    setRepFilter('');
     setCurrentPage(1);
   };
 
