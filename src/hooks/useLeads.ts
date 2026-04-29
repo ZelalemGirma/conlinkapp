@@ -15,6 +15,7 @@ export const useLeads = (filters?: {
   status?: string;
   zone?: string;
   source?: string;
+  repId?: string;
 }) => {
   const { campaignId } = useCampaignFilter();
   const { user, role, loading } = useAuth();
