@@ -15,6 +15,7 @@ export const useLeads = (filters?: {
   status?: string;
   zone?: string;
   source?: string;
+  repId?: string;
 }) => {
   const { campaignId } = useCampaignFilter();
   const { user, role, loading } = useAuth();
@@ -52,6 +53,9 @@ export const useLeads = (filters?: {
       }
       if (filters?.source) {
         query = query.eq('source', filters.source);
+      }
+      if (filters?.repId && canSeeAllLeads) {
+        query = query.or(`assigned_rep_id.eq.${filters.repId},created_by.eq.${filters.repId}`);
       }
 
       const { data, error } = await query;

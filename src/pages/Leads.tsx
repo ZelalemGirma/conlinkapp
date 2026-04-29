@@ -68,6 +68,7 @@ const Leads = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [zoneFilter, setZoneFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
+  const [repFilter, setRepFilter] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [sortField, setSortField] = useState<SortField>('updated_at');
@@ -90,6 +91,7 @@ const Leads = () => {
     status: statusFilter || undefined,
     zone: zoneFilter || undefined,
     source: sourceFilter || undefined,
+    repId: (isManagerOrAdmin && repFilter) ? repFilter : undefined,
   });
 
   const sortedLeads = useMemo(() => {
@@ -106,13 +108,14 @@ const Leads = () => {
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedLeads = sortedLeads.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
 
-  const hasFilters = search || categoryFilter || statusFilter || zoneFilter || sourceFilter;
+  const hasFilters = search || categoryFilter || statusFilter || zoneFilter || sourceFilter || repFilter;
   const clearFilters = () => {
     setSearch('');
     setCategoryFilter('');
     setStatusFilter('');
     setZoneFilter('');
     setSourceFilter('');
+    setRepFilter('');
     setCurrentPage(1);
   };
 
@@ -223,7 +226,7 @@ const Leads = () => {
       {/* Filters */}
       <Card>
         <CardContent className="pt-4 pb-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${isManagerOrAdmin ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
             <div className="relative lg:col-span-2">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -269,6 +272,20 @@ const Leads = () => {
                 ))}
               </SelectContent>
             </Select>
+            {isManagerOrAdmin && (
+              <Select value={repFilter} onValueChange={v => { setRepFilter(v === 'all' ? '' : v); setCurrentPage(1); }}>
+                <SelectTrigger><SelectValue placeholder="Sales Rep" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Reps</SelectItem>
+                  {(profiles ?? [])
+                    .slice()
+                    .sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''))
+                    .map(p => (
+                      <SelectItem key={p.user_id} value={p.user_id}>{p.full_name || 'Unknown'}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           {hasFilters && (
             <Button variant="ghost" size="sm" className="mt-2 text-xs" onClick={clearFilters}>
