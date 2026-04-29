@@ -54,6 +54,9 @@ export const useLeads = (filters?: {
       if (filters?.source) {
         query = query.eq('source', filters.source);
       }
+      if (filters?.repId && canSeeAllLeads) {
+        query = query.or(`assigned_rep_id.eq.${filters.repId},created_by.eq.${filters.repId}`);
+      }
 
       const { data, error } = await query;
       if (error) throw error;
