@@ -93,27 +93,33 @@ const Leads = () => {
     source: sourceFilter || undefined,
   });
 
-  const sortedLeads = useMemo(() => {
+  const filteredByRep = useMemo(() => {
     if (!leads) return [];
-    return [...leads].sort((a, b) => {
+    if (!isManagerOrAdmin || !repFilter) return leads;
+    return leads.filter(l => (l.assigned_rep_id || l.created_by) === repFilter);
+  }, [leads, repFilter, isManagerOrAdmin]);
+
+  const sortedLeads = useMemo(() => {
+    return [...filteredByRep].sort((a, b) => {
       const av = (a[sortField] ?? '') as string;
       const bv = (b[sortField] ?? '') as string;
       const cmp = av.localeCompare(bv, undefined, { sensitivity: 'base' });
       return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [leads, sortField, sortDir]);
+  }, [filteredByRep, sortField, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(sortedLeads.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedLeads = sortedLeads.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
 
-  const hasFilters = search || categoryFilter || statusFilter || zoneFilter || sourceFilter;
+  const hasFilters = search || categoryFilter || statusFilter || zoneFilter || sourceFilter || repFilter;
   const clearFilters = () => {
     setSearch('');
     setCategoryFilter('');
     setStatusFilter('');
     setZoneFilter('');
     setSourceFilter('');
+    setRepFilter('');
     setCurrentPage(1);
   };
 
