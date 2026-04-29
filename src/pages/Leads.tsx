@@ -276,6 +276,22 @@ const Leads = () => {
                 ))}
               </SelectContent>
             </Select>
+            {isManagerOrAdmin && (
+              <Select value={repFilter} onValueChange={v => { setRepFilter(v === 'all' ? '' : v); setCurrentPage(1); }}>
+                <SelectTrigger><SelectValue placeholder="Rep / Owner" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Reps</SelectItem>
+                  {(profiles ?? [])
+                    .slice()
+                    .sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''))
+                    .map(p => (
+                      <SelectItem key={p.user_id} value={p.user_id}>
+                        {p.full_name || 'Unknown'}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           {hasFilters && (
             <Button variant="ghost" size="sm" className="mt-2 text-xs" onClick={clearFilters}>
